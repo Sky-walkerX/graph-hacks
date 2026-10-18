@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useAgo } from "@/app/components/clock";
+import { ReceiptGraph } from "./receipt-graph";
 import { useManifests, type ManifestRow, type OutcomeRow } from "@/hooks/useHandoffs";
 import { sourceLabel } from "@/lib/notes/source";
 
@@ -73,6 +75,17 @@ function Path({ via, then }: { via: Extract<Change, { now: unknown }>["now"]["vi
   );
 }
 
+/** The receipt's graph, drawn once opened. */
+function GraphToggle({ receiptId }: { receiptId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="lk-manifest-evidence" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>Show the graph behind it</summary>
+      {open ? <ReceiptGraph receiptId={receiptId} /> : null}
+    </details>
+  );
+}
+
 function Receipt({ m }: { m: ManifestRow }) {
   const ago = useAgo();
   const stale = m.changes.length > 0;
@@ -95,6 +108,7 @@ function Receipt({ m }: { m: ManifestRow }) {
           ))}
         </ul>
       ) : null}
+      <GraphToggle receiptId={m.receipt.id} />
       <details className="lk-manifest-evidence">
         <summary>Receipt {m.receipt.id.slice(0, 8)}: what was handed over, and why</summary>
         <table>

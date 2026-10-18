@@ -7,6 +7,7 @@ import {
 } from "./context";
 import { projectTask, syncedGraph } from "./project";
 import { keystones, whoKnows } from "./brain";
+import { receiptView } from "./view";
 
 // The manifest: what a baton's next agent is handed, worked out in the graph
 // and kept as a receipt, then checked against the notebook as it moves on.
@@ -139,4 +140,9 @@ export async function knows(userId: string, find: { topic?: string; file?: strin
 /** The decisions the most work rests on: see keystones. */
 export async function keystoneDecisions(userId: string, limit?: number) {
   return keystones(await syncedGraph(userId), limit);
+}
+
+/** A receipt as nodes and relationships, for drawing: see receiptView. */
+export async function viewReceipt(userId: string, receiptId: string) {
+  return receiptView(await syncedGraph(userId), receiptId);
 }
