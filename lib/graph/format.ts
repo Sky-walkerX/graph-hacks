@@ -1,4 +1,4 @@
-import type { Change, Impact, Item, Receipt, Step } from "./context";
+import type { Change, Impact, Item, Outcome, Receipt, Step } from "./context";
 
 // The manifest, its changes and a note's impact, as an agent reads them in an
 // MCP reply. Pure, so it's tested alone.
@@ -74,4 +74,19 @@ export function formatImpact(impact: Impact): string {
     }
   }
   return lines.join("\n");
+}
+
+/** How tasks were finished, and whether what they rested on still stands. */
+export function formatOutcomes(found: Outcome[]): string {
+  return found
+    .map((o) => {
+      const at = new Date(o.at).toISOString().slice(0, 16).replace("T", " ");
+      const pages = o.delivered.map((d) => `- ${page(d)}, revision ${d.hash.slice(0, 8)}, via ${d.why}`);
+      const verdict =
+        o.changes.length === 0
+          ? "Everything it rested on still stands."
+          : `It may need another look. ${formatChanges(o.changes, o.at).replace(/^.*?:\n/, `${o.changes.length} change${o.changes.length === 1 ? "" : "s"} since it was finished:\n`)}`;
+      return [`# Task "${o.task.title}" (task ${o.task.id})`, `Finished by ${o.agent} at ${at} UTC, against receipt ${o.receipt}:`, ...pages, "", verdict].join("\n");
+    })
+    .join("\n\n");
 }

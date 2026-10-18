@@ -330,3 +330,64 @@ export async function linkDependency(
   );
   return "linked";
 }
+
+/** The agent's current receipt for a task's baton: the newest one nothing refreshed. */
+export async function receiptForTask(graph: Graph, agent: string, taskId: string): Promise<string | null> {
+  const [r] = await read<{ id: string }>(
+    graph,
+    `MATCH (:Agent {name: $agent})-[:RECEIVED]->(r:Receipt)-[:FOR]->(:Handoff)-[:FOR]->(:Task {id: $task})
+     WHERE NOT ()-[:REFRESHES]->(r)
+     RETURN r.id AS id ORDER BY r.at DESC LIMIT 1`,
+    { agent, task: taskId },
+  );
+  return r?.id ?? null;
+}
+
+/**
+ * Records that `agent` finished a task against the context in its current
+ * receipt for it, so the finished work can be traced to the pages it rested
+ * on, and flagged when one of them changes later. Null when the agent holds
+ * no receipt for the task.
+ */
+export async function recordOutcome(graph: Graph, agent: string, taskId: string): Promise<string | null> {
+  const receipt = await receiptForTask(graph, agent, taskId);
+  if (!receipt) return null;
+  await run(
+    graph,
+    `MATCH (t:Task {id: $task}), (r:Receipt {id: $receipt})
+     SET t.done = true
+     MERGE (t)-[o:DONE_WITH]->(r)
+     SET o.at = $at, o.agent = $agent`,
+    { task: taskId, receipt, at: Date.now(), agent },
+  );
+  return receipt;
+}
+
+export type Outcome = {
+  task: { id: string; title: string; done: boolean };
+  agent: string;
+  at: number;
+  receipt: string;
+  delivered: Delivered[];
+  /** What changed since the task was finished against that receipt. */
+  changes: Change[];
+};
+
+/** How tasks were finished: the receipts they were done against, and what changed since. */
+export async function outcomes(graph: Graph, taskId?: string): Promise<Outcome[]> {
+  const rows = await read<{ task: Outcome["task"]; agent: string; at: number; receipt: string; handoff: string }>(
+    graph,
+    `MATCH (t:Task)-[o:DONE_WITH]->(r:Receipt)
+     WHERE ${taskId ? "t.id = $task" : "t.done = true"}
+     RETURN {id: t.id, title: t.title, done: t.done} AS task, o.agent AS agent, o.at AS at, r.id AS receipt, r.handoff AS handoff
+     ORDER BY at DESC`,
+    { task: taskId },
+  );
+  return Promise.all(
+    rows.map(async (o) => {
+      const found = (await findReceipt(graph, o.agent, o.receipt))!;
+      const now = await contextFor(graph, o.handoff);
+      return { task: o.task, agent: o.agent, at: o.at, receipt: o.receipt, delivered: found.delivered, changes: diff(found.delivered, now.items) };
+    }),
+  );
+}

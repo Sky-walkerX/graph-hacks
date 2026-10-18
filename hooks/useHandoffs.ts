@@ -4,6 +4,7 @@ import { queryKeys } from "@/lib/query-keys";
 import type { listHandoffs } from "@/lib/handoff/store";
 import type { Attention } from "@/lib/notes/attention";
 import type { Manifest } from "@/lib/graph/manifest";
+import type { Outcome } from "@/lib/graph/context";
 
 type Json<T> = T extends Date ? string : T extends (infer U)[] ? Json<U>[] : T extends object ? { [K in keyof T]: Json<T[K]> } : T;
 export type HandoffRow = Json<Awaited<ReturnType<typeof listHandoffs>>[number]>;
@@ -45,8 +46,9 @@ export function useCloseHandoff() {
   });
 }
 
-export type ManifestList = Json<{ available: boolean; manifests: Manifest[] }>;
+export type ManifestList = Json<{ available: boolean; manifests: Manifest[]; atRisk: Outcome[] }>;
 export type ManifestRow = ManifestList["manifests"][number];
+export type OutcomeRow = ManifestList["atRisk"][number];
 
 // What each agent was handed when it picked up a baton, worked out in the
 // graph, and what changed since. Refetched on mount, and every half minute
