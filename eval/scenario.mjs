@@ -12,7 +12,7 @@
 // STOP_AFTER=7 stops once the user has witnessed the replacement, leaving
 // Codex's context out of date: the state to open the app at for a demo.
 
-import { BASE, EMAIL, PASSWORD, agent, signUp, token, web } from "./lib.mjs";
+import { BASE, EMAIL, PASSWORD, agent, signUp, token, witness } from "./lib.mjs";
 
 const QUIET = process.env.QUIET === "1";
 const STOP_AFTER = Number(process.env.STOP_AFTER ?? Infinity);
@@ -35,11 +35,6 @@ function expect(ok, what) {
 }
 
 const idIn = (text, what = "Note id") => text.match(new RegExp(`${what} ([0-9a-f-]{36})`))?.[1];
-
-async function witness(noteId) {
-  const res = await web(`/api/milestones/${noteId}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ witnessed: true }) });
-  if (!res.ok) throw new Error(`witness: ${res.status}`);
-}
 
 async function main() {
   console.log(`LockIn Manifest scenario against ${BASE}`);
