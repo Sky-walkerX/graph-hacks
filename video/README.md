@@ -19,3 +19,14 @@ npm run studio     # preview and scrub in the browser
 `render.sh` uses the Chrome Remotion downloads. To use another one, set `BROWSER=/path/to/chrome-headless-shell`.
 
 The scenes are in `src/scenes-intro.tsx` (LockIn) and `src/scenes-features.tsx` (LockIn Manifest), with timings in `src/Film.tsx`. The tool calls and replies they show are shortened from the real ones in `eval/scenario.mjs`.
+
+## The demo video
+
+`Demo` is the narrated YouTube demo, cut from a real run:
+
+1. `video/demo/run.mjs` signs up an account on a running LockIn and has two local agents (any model served by an OpenAI-compatible API, such as llama.cpp) work through LockIn's MCP tools. `agent.mjs` is the agent loop. Meanwhile it records the app in a browser and acts as the user: witnessing notes, opening the receipt graph, asking who knows what. It writes `browser.webm` and `events.json`.
+2. `video/demo/narrate.py` renders `narration.json` with Chatterbox TTS (CPU is fine).
+3. `video/demo/prep.mjs <run dir> <voice dir>` builds `src/demo-timeline.json` and copies the media into `public/demo`. Model thinking time is squeezed; what the user does plays near real time.
+4. `npx remotion render src/index.ts Demo out/demo.mp4`
+
+`demo/youtube.md` has the title, description and chapters.

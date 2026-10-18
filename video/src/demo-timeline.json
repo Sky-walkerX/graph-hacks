@@ -1,0 +1,1174 @@
+{
+ "fps": 30,
+ "frames": 3433,
+ "scenes": [
+  {
+   "kind": "open",
+   "voice": "open",
+   "from": 0,
+   "frames": 245,
+   "voiceAt": 12
+  },
+  {
+   "kind": "lockin",
+   "voice": "lockin",
+   "from": 245,
+   "frames": 355,
+   "voiceAt": 12
+  },
+  {
+   "kind": "real",
+   "voice": "real",
+   "from": 600,
+   "frames": 286,
+   "voiceAt": 12
+  },
+  {
+   "kind": "chapter",
+   "label": "decide",
+   "voice": "decide",
+   "seconds": 8.120000000000001,
+   "clips": [
+    {
+     "start": 1.845,
+     "end": 30.051,
+     "at": 0,
+     "dur": 0.8353128214719912,
+     "atFrame": 0,
+     "frames": 25
+    },
+    {
+     "start": 30.051,
+     "end": 30.053,
+     "at": 0.8353128214719912,
+     "dur": 0.0015187505844945293,
+     "atFrame": 25,
+     "frames": 1
+    },
+    {
+     "start": 30.053,
+     "end": 30.111,
+     "at": 0.8368315720564857,
+     "dur": 0.04404376695034135,
+     "atFrame": 25,
+     "frames": 1
+    },
+    {
+     "start": 30.111,
+     "end": 30.112,
+     "at": 0.8808753390068271,
+     "dur": 0.0007593752922472647,
+     "atFrame": 26,
+     "frames": 1
+    },
+    {
+     "start": 30.112,
+     "end": 50.207,
+     "at": 0.8816347142990744,
+     "dur": 0.8353128214719912,
+     "atFrame": 26,
+     "frames": 25
+    },
+    {
+     "start": 50.207,
+     "end": 50.208,
+     "at": 1.7169475357710655,
+     "dur": 0.0007593752922472647,
+     "atFrame": 52,
+     "frames": 1
+    },
+    {
+     "start": 50.208,
+     "end": 50.268,
+     "at": 1.7177069110633127,
+     "dur": 0.045562517534835874,
+     "atFrame": 52,
+     "frames": 1
+    },
+    {
+     "start": 50.268,
+     "end": 50.269,
+     "at": 1.7632694285981487,
+     "dur": 0.0007593752922472647,
+     "atFrame": 53,
+     "frames": 1
+    },
+    {
+     "start": 50.269,
+     "end": 51.228,
+     "at": 1.764028803890396,
+     "dur": 0.7282409052651267,
+     "atFrame": 53,
+     "frames": 22
+    },
+    {
+     "start": 51.228,
+     "end": 52.642,
+     "at": 2.4922697091555226,
+     "dur": 1.073756663237632,
+     "atFrame": 75,
+     "frames": 32
+    },
+    {
+     "start": 52.642,
+     "end": 55.004,
+     "at": 3.5660263723931545,
+     "dur": 1.7936444402880392,
+     "atFrame": 107,
+     "frames": 54
+    },
+    {
+     "start": 55.004,
+     "end": 56.352,
+     "at": 5.359670812681194,
+     "dur": 1.0236378939493127,
+     "atFrame": 161,
+     "frames": 31
+    },
+    {
+     "start": 56.352,
+     "end": 58.638,
+     "at": 6.3833087066305065,
+     "dur": 1.735931918077247,
+     "atFrame": 191,
+     "frames": 52
+    },
+    {
+     "start": 58.638,
+     "end": 58.639,
+     "at": 8.119240624707754,
+     "dur": 0.0007593752922472647,
+     "atFrame": 244,
+     "frames": 1
+    }
+   ],
+   "events": [
+    {
+     "t": 30051,
+     "agent": "agent-a",
+     "type": "thought",
+     "text": "I need to create a new note about the team's decision.",
+     "ms": 28175,
+     "film": 0.8353128214719912,
+     "frame": 25
+    },
+    {
+     "t": 30053,
+     "agent": "agent-a",
+     "type": "call",
+     "tool": "save_note",
+     "args": {
+      "title": "Checkout: retry the payment call on 5xx",
+      "body": "Decision: POST /payments/charge is retried up to 3 times with backoff on any 5xx. Implemented in lib/checkout/pay.ts.",
+      "repo": "acme/shop",
+      "files": [
+       "lib/checkout/pay.ts"
+      ]
+     },
+     "film": 0.8368315720564857,
+     "frame": 25
+    },
+    {
+     "t": 30111,
+     "agent": "agent-a",
+     "type": "result",
+     "tool": "save_note",
+     "text": "Saved \"Checkout: retry the payment call on 5xx\" to the Inbox, on page 9. Note id 319e5b88-b0b3-495f-834c-d1c37bc90e39.\nIt shows as recorded by Agent A and waits for the user to witness it.\nhttp://localhost:3005/inbox?note=319e5b88-b0b3-495f-834c-d1c37bc90e39",
+     "isError": false,
+     "film": 0.8808753390068271,
+     "frame": 26
+    },
+    {
+     "t": 30112,
+     "agent": "agent-a",
+     "type": "done",
+     "text": "",
+     "film": 0.8816347142990744,
+     "frame": 26
+    },
+    {
+     "t": 50207,
+     "agent": "agent-a",
+     "type": "thought",
+     "text": "I need to create a note about the Payments API and its charge endpoint.",
+     "ms": 20094,
+     "film": 1.7169475357710655,
+     "frame": 52
+    },
+    {
+     "t": 50208,
+     "agent": "agent-a",
+     "type": "call",
+     "tool": "save_note",
+     "args": {
+      "title": "Payments API: charge endpoint",
+      "body": "POST /payments/charge takes amount, currency and customer, and answers 201 with the charge id.",
+      "repo": "acme/shop",
+      "files": [
+       "lib/payments/client.ts"
+      ]
+     },
+     "film": 1.7177069110633127,
+     "frame": 52
+    },
+    {
+     "t": 50268,
+     "agent": "agent-a",
+     "type": "result",
+     "tool": "save_note",
+     "text": "Saved \"Payments API: charge endpoint\" to the Inbox, on page 10. Note id 9c3ac9b7-9944-4a8d-ac19-eca0910de439.\nIt shows as recorded by Agent A and waits for the user to witness it.\nhttp://localhost:3005/inbox?note=9c3ac9b7-9944-4a8d-ac19-eca0910de439\n\nNotes that look related:\n- p. 9, \"Checkout: retry the payment call on 5xx\" (id 319e5b88-b0b3-495f-834c-d1c37bc90e39), in the Inbox, by Agent A\nIf your note says something one of these now gets wrong (the code or the facts moved on), call link_replacement with id 9c3ac9b7-9944-4a8d-ac19-eca0910de439 and its id: once the user witnesses yours, the old page retires from search. If they still hold alongside yours, there's nothing to do.",
+     "isError": false,
+     "film": 1.7632694285981487,
+     "frame": 53
+    },
+    {
+     "t": 50269,
+     "agent": "agent-a",
+     "type": "done",
+     "text": "",
+     "film": 1.764028803890396,
+     "frame": 53
+    }
+   ],
+   "speedup": 6.994334975369457,
+   "from": 886,
+   "frames": 244,
+   "voiceAt": 12
+  },
+  {
+   "kind": "chapter",
+   "label": "handoff",
+   "voice": "handoff",
+   "seconds": 7.200000000000001,
+   "clips": [
+    {
+     "start": 58.639,
+     "end": 86.1,
+     "at": 0,
+     "dur": 1.3011335633316905,
+     "atFrame": 0,
+     "frames": 39
+    },
+    {
+     "start": 86.1,
+     "end": 86.101,
+     "at": 1.3011335633316905,
+     "dur": 0.0011828486939379004,
+     "atFrame": 39,
+     "frames": 1
+    },
+    {
+     "start": 86.101,
+     "end": 86.167,
+     "at": 1.3023164120256283,
+     "dur": 0.07806801379990143,
+     "atFrame": 39,
+     "frames": 2
+    },
+    {
+     "start": 86.167,
+     "end": 119.159,
+     "at": 1.3803844258255298,
+     "dur": 1.3011335633316905,
+     "atFrame": 41,
+     "frames": 39
+    },
+    {
+     "start": 119.159,
+     "end": 119.16,
+     "at": 2.6815179891572205,
+     "dur": 0.0011828486939379004,
+     "atFrame": 80,
+     "frames": 1
+    },
+    {
+     "start": 119.16,
+     "end": 119.247,
+     "at": 2.6827008378511583,
+     "dur": 0.10290783637259733,
+     "atFrame": 80,
+     "frames": 3
+    },
+    {
+     "start": 119.247,
+     "end": 165.139,
+     "at": 2.785608674223756,
+     "dur": 1.3011335633316905,
+     "atFrame": 84,
+     "frames": 39
+    },
+    {
+     "start": 165.139,
+     "end": 165.14,
+     "at": 4.0867422375554465,
+     "dur": 0.0011828486939379004,
+     "atFrame": 123,
+     "frames": 1
+    },
+    {
+     "start": 165.14,
+     "end": 165.2,
+     "at": 4.087925086249385,
+     "dur": 0.07097092163627403,
+     "atFrame": 123,
+     "frames": 2
+    },
+    {
+     "start": 165.2,
+     "end": 165.201,
+     "at": 4.158896007885659,
+     "dur": 0.0011828486939379004,
+     "atFrame": 125,
+     "frames": 1
+    },
+    {
+     "start": 165.201,
+     "end": 167.77,
+     "at": 4.160078856579597,
+     "dur": 3.038738294726466,
+     "atFrame": 125,
+     "frames": 91
+    },
+    {
+     "start": 167.77,
+     "end": 167.771,
+     "at": 7.198817151306063,
+     "dur": 0.0011828486939379004,
+     "atFrame": 216,
+     "frames": 1
+    }
+   ],
+   "events": [
+    {
+     "t": 86100,
+     "agent": "agent-a",
+     "type": "thought",
+     "text": "First, I need to add the task and get its id.",
+     "ms": 27460,
+     "film": 1.3011335633316905,
+     "frame": 39
+    },
+    {
+     "t": 86101,
+     "agent": "agent-a",
+     "type": "call",
+     "tool": "add_task",
+     "args": {
+      "title": "Add retry with backoff to checkout payment",
+      "note_id": "319e5b88-b0b3-495f-834c-d1c37bc90e39",
+      "notes": "Implement retry mechanism for failed payments."
+     },
+     "film": 1.3023164120256283,
+     "frame": 39
+    },
+    {
+     "t": 86167,
+     "agent": "agent-a",
+     "type": "result",
+     "tool": "add_task",
+     "text": "Added task \"Add retry with backoff to checkout payment\" under \"Checkout: retry the payment call on 5xx\" in the Inbox. Task id c13c45e6-d66c-4f78-aa54-7f2e533d0a1c.\nhttp://localhost:3005/subjects/c89617f5-1682-43da-890f-a00283e194e0?open=task:c13c45e6-d66c-4f78-aa54-7f2e533d0a1c",
+     "isError": false,
+     "film": 1.3803844258255298,
+     "frame": 41
+    },
+    {
+     "t": 119159,
+     "agent": "agent-a",
+     "type": "thought",
+     "text": "The task has been added successfully, now I need to link the dependency.",
+     "ms": 32991,
+     "film": 2.6815179891572205,
+     "frame": 80
+    },
+    {
+     "t": 119160,
+     "agent": "agent-a",
+     "type": "call",
+     "tool": "link_dependency",
+     "args": {
+      "task_id": "c13c45e6-d66c-4f78-aa54-7f2e533d0a1c",
+      "depends_on": "319e5b88-b0b3-495f-834c-d1c37bc90e39",
+      "reason": "the retry decision is what the task implements"
+     },
+     "film": 2.6827008378511583,
+     "frame": 80
+    },
+    {
+     "t": 119247,
+     "agent": "agent-a",
+     "type": "result",
+     "tool": "link_dependency",
+     "text": "Recorded: task c13c45e6-d66c-4f78-aa54-7f2e533d0a1c depends on note 319e5b88-b0b3-495f-834c-d1c37bc90e39.",
+     "isError": false,
+     "film": 2.785608674223756,
+     "frame": 84
+    },
+    {
+     "t": 119247,
+     "agent": "agent-a",
+     "type": "done",
+     "text": "",
+     "film": 2.785608674223756,
+     "frame": 84
+    },
+    {
+     "t": 165139,
+     "agent": "agent-a",
+     "type": "thought",
+     "text": "Leave a baton for the next agent with the current state and next steps.",
+     "ms": 45890,
+     "film": 4.0867422375554465,
+     "frame": 123
+    },
+    {
+     "t": 165140,
+     "agent": "agent-a",
+     "type": "call",
+     "tool": "save_handoff",
+     "args": {
+      "goal": "Retry failed checkout payments with backoff",
+      "state": "Decision recorded; retry wrapper half-written, no tests yet.",
+      "next": "Finish the retry wrapper and add a test for 3 retries on 503.",
+      "next_at": "lib/checkout/pay.ts:40",
+      "pages": [
+       10
+      ],
+      "task_id": "c13c45e6-d66c-4f78-aa54-7f2e533d0a1c",
+      "repo": "acme/shop"
+     },
+     "film": 4.087925086249385,
+     "frame": 123
+    },
+    {
+     "t": 165200,
+     "agent": "agent-a",
+     "type": "result",
+     "tool": "save_handoff",
+     "text": "Baton saved for acme/shop. The next agent picks it up with pickup_handoff (subject or repo \"acme/shop\"), or the user with /lockin:pickup in Claude Code.\nhttp://localhost:3005/contents",
+     "isError": false,
+     "film": 4.158896007885659,
+     "frame": 125
+    },
+    {
+     "t": 165201,
+     "agent": "agent-a",
+     "type": "done",
+     "text": "",
+     "film": 4.160078856579597,
+     "frame": 125
+    }
+   ],
+   "speedup": 15.15722222222222,
+   "from": 1130,
+   "frames": 216,
+   "voiceAt": 12
+  },
+  {
+   "kind": "chapter",
+   "label": "pickup",
+   "voice": "pickup",
+   "seconds": 9.08,
+   "clips": [
+    {
+     "start": 167.771,
+     "end": 179.698,
+     "at": 0,
+     "dur": 1.5147103427358204,
+     "atFrame": 0,
+     "frames": 45
+    },
+    {
+     "start": 179.698,
+     "end": 179.699,
+     "at": 1.5147103427358204,
+     "dur": 0.0013770094024871094,
+     "atFrame": 45,
+     "frames": 1
+    },
+    {
+     "start": 179.699,
+     "end": 179.794,
+     "at": 1.5160873521383076,
+     "dur": 0.13081589323627538,
+     "atFrame": 45,
+     "frames": 4
+    },
+    {
+     "start": 179.794,
+     "end": 179.795,
+     "at": 1.6469032453745829,
+     "dur": 0.0013770094024871094,
+     "atFrame": 49,
+     "frames": 1
+    },
+    {
+     "start": 179.795,
+     "end": 182.351,
+     "at": 1.64828025477707,
+     "dur": 3.5196360327570515,
+     "atFrame": 49,
+     "frames": 106
+    },
+    {
+     "start": 182.351,
+     "end": 185.191,
+     "at": 5.167916287534122,
+     "dur": 3.9107067030633904,
+     "atFrame": 155,
+     "frames": 117
+    },
+    {
+     "start": 185.191,
+     "end": 185.192,
+     "at": 9.078622990597513,
+     "dur": 0.0013770094024871094,
+     "atFrame": 272,
+     "frames": 1
+    }
+   ],
+   "events": [
+    {
+     "t": 179698,
+     "agent": "agent-b",
+     "type": "thought",
+     "text": "I need to pick up the work left by another agent.",
+     "ms": 11879,
+     "film": 1.5147103427358204,
+     "frame": 45
+    },
+    {
+     "t": 179699,
+     "agent": "agent-b",
+     "type": "call",
+     "tool": "pickup_handoff",
+     "args": {
+      "repo": "acme/shop"
+     },
+     "film": 1.5160873521383076,
+     "frame": 45
+    },
+    {
+     "t": 179794,
+     "agent": "agent-b",
+     "type": "result",
+     "tool": "pickup_handoff",
+     "text": "# Baton from Agent A, left 2026-10-18 11:51 UTC\nSubject: the Inbox\nRepo: acme/shop\nTask: \"Add retry with backoff to checkout payment\" (task c13c45e6-d66c-4f78-aa54-7f2e533d0a1c)\nhttp://localhost:3005/contents\n\nGoal: Retry failed checkout payments with backoff\nWhere it stands: Decision recorded; retry wrapper half-written, no tests yet.\nNext: Finish the retry wrapper and add a test for 3 retries on 503. (start at lib/checkout/pay.ts:40)\n\nRead first:\n\n## p. 10: Payments API: charge endpoint (note 9c3ac9b7-9944-4a8d-ac19-eca0910de439)\nPOST /payments/charge takes amount, currency and customer, and answers 201 with the charge id.\n\n## p. 9: Checkout: retry the payment call on 5xx (note 319e5b88-b0b3-495f-834c-d1c37bc90e39)\nDecision: POST /payments/charge is retried up to 3 times with backoff on any 5xx. Implemented in lib/checkout/pay.ts.\n\n## Context manifest (receipt ac5f8cdd-3954-47de-ac43-d76c02722577)\nThe graph found these pages for this work; the pages below are their current text.\n- p. 10 \"Payments API: charge endpoint\" (note 9c3ac9b7-9944-4a8d-ac19-eca0910de439), via this baton → p. 10.\n- p. 9 \"Checkout: retry the payment call on 5xx\" (note 319e5b88-b0b3-495f-834c-d1c37bc90e39), via this baton → task \"Add retry with backoff to checkout payment\" → p. 9.\n\nBefore you tick the task done or leave a baton, call check_context: it says whether any of these pages changed since now.\n\nYou've picked this up. Carry on from Next. When you stop before it's done, leave a baton with save_handoff.",
+     "isError": false,
+     "film": 1.6469032453745829,
+     "frame": 49
+    },
+    {
+     "t": 179795,
+     "agent": "agent-b",
+     "type": "done",
+     "text": "",
+     "film": 1.64828025477707,
+     "frame": 49
+    }
+   ],
+   "speedup": 1.918612334801762,
+   "from": 1346,
+   "frames": 272,
+   "voiceAt": 12
+  },
+  {
+   "kind": "chapter",
+   "label": "change",
+   "voice": "change",
+   "seconds": 13.520000000000001,
+   "clips": [
+    {
+     "start": 185.192,
+     "end": 228.184,
+     "at": 0,
+     "dur": 1.2463962453905466,
+     "atFrame": 0,
+     "frames": 37
+    },
+    {
+     "start": 228.184,
+     "end": 228.185,
+     "at": 1.2463962453905466,
+     "dur": 0.001133087495809588,
+     "atFrame": 37,
+     "frames": 1
+    },
+    {
+     "start": 228.185,
+     "end": 228.31,
+     "at": 1.2475293328863561,
+     "dur": 0.14163593697619847,
+     "atFrame": 37,
+     "frames": 4
+    },
+    {
+     "start": 228.31,
+     "end": 228.311,
+     "at": 1.3891652698625547,
+     "dur": 0.001133087495809588,
+     "atFrame": 42,
+     "frames": 1
+    },
+    {
+     "start": 228.311,
+     "end": 229.678,
+     "at": 1.3902983573583643,
+     "dur": 1.5489306067717066,
+     "atFrame": 42,
+     "frames": 46
+    },
+    {
+     "start": 229.678,
+     "end": 232.013,
+     "at": 2.939228964130071,
+     "dur": 2.6457593027153874,
+     "atFrame": 88,
+     "frames": 79
+    },
+    {
+     "start": 232.013,
+     "end": 234.515,
+     "at": 5.584988266845459,
+     "dur": 2.8349849145155885,
+     "atFrame": 168,
+     "frames": 85
+    },
+    {
+     "start": 234.515,
+     "end": 239.05,
+     "at": 8.419973181361048,
+     "dur": 5.098893731143145,
+     "atFrame": 253,
+     "frames": 153
+    },
+    {
+     "start": 239.05,
+     "end": 239.051,
+     "at": 13.518866912504192,
+     "dur": 0.001133087495809588,
+     "atFrame": 406,
+     "frames": 1
+    }
+   ],
+   "events": [
+    {
+     "t": 228184,
+     "agent": "agent-a",
+     "type": "thought",
+     "text": "I need to replace the existing note with a new one.",
+     "ms": 42991,
+     "film": 1.2463962453905466,
+     "frame": 37
+    },
+    {
+     "t": 228185,
+     "agent": "agent-a",
+     "type": "call",
+     "tool": "supersede_note",
+     "args": {
+      "id": "319e5b88-b0b3-495f-834c-d1c37bc90e39",
+      "title": "Checkout: no automatic retries until charges are idempotent",
+      "body": "POST /payments/charge has no idempotency key, so a retried 5xx can charge twice (ch_81, ch_82). Don't retry automatically until the API accepts Idempotency-Key.",
+      "repo": "acme/shop",
+      "files": [
+       "lib/checkout/pay.ts"
+      ]
+     },
+     "film": 1.2475293328863561,
+     "frame": 37
+    },
+    {
+     "t": 228310,
+     "agent": "agent-a",
+     "type": "result",
+     "tool": "supersede_note",
+     "text": "Saved \"Checkout: no automatic retries until charges are idempotent\" on page 11 to replace page 9 (\"Checkout: retry the payment call on 5xx\"). Note id 0ec998cd-e062-4466-a3f0-465507393da8.\nThe old note stays in search until the user witnesses this one.\nhttp://localhost:3005/inbox?note=0ec998cd-e062-4466-a3f0-465507393da8\n\nOnce witnessed, this affects:\n- Task \"Add retry with backoff to checkout payment\" (open): task \"Add retry with backoff to checkout payment\" → p. 9\n- Baton \"Retry failed checkout payments with backoff\" (picked up): this baton → task \"Add retry with backoff to checkout payment\" → p. 9\n\nAgents working from it (or a page that leans on it):\n- agent-b: handed p. 9 at 2026-10-18 11:51 UTC (receipt ac5f8cdd-3954-47de-ac43-d76c02722577), still current",
+     "isError": false,
+     "film": 1.3891652698625547,
+     "frame": 42
+    },
+    {
+     "t": 228311,
+     "agent": "agent-a",
+     "type": "done",
+     "text": "",
+     "film": 1.3902983573583643,
+     "frame": 42
+    }
+   ],
+   "speedup": 3.983653846153846,
+   "from": 1618,
+   "frames": 406,
+   "voiceAt": 12
+  },
+  {
+   "kind": "chapter",
+   "label": "refused",
+   "voice": "refused",
+   "seconds": 10.000000000000004,
+   "clips": [
+    {
+     "start": 239.051,
+     "end": 261.777,
+     "at": 0,
+     "dur": 1.5269294836202114,
+     "atFrame": 0,
+     "frames": 46
+    },
+    {
+     "start": 261.777,
+     "end": 261.778,
+     "at": 1.5269294836202114,
+     "dur": 0.0013881177123820103,
+     "atFrame": 46,
+     "frames": 1
+    },
+    {
+     "start": 261.778,
+     "end": 261.896,
+     "at": 1.5283176013325934,
+     "dur": 0.1637978900610772,
+     "atFrame": 46,
+     "frames": 5
+    },
+    {
+     "start": 261.896,
+     "end": 273.463,
+     "at": 1.6921154913936707,
+     "dur": 1.5269294836202114,
+     "atFrame": 51,
+     "frames": 46
+    },
+    {
+     "start": 273.463,
+     "end": 273.464,
+     "at": 3.2190449750138823,
+     "dur": 0.0013881177123820103,
+     "atFrame": 97,
+     "frames": 1
+    },
+    {
+     "start": 273.464,
+     "end": 273.532,
+     "at": 3.2204330927262643,
+     "dur": 0.0943920044419767,
+     "atFrame": 97,
+     "frames": 3
+    },
+    {
+     "start": 273.532,
+     "end": 294.792,
+     "at": 3.314825097168241,
+     "dur": 1.5269294836202114,
+     "atFrame": 99,
+     "frames": 46
+    },
+    {
+     "start": 294.792,
+     "end": 294.793,
+     "at": 4.841754580788452,
+     "dur": 0.0013881177123820103,
+     "atFrame": 145,
+     "frames": 1
+    },
+    {
+     "start": 294.793,
+     "end": 294.93,
+     "at": 4.843142698500834,
+     "dur": 0.19017212659633542,
+     "atFrame": 145,
+     "frames": 6
+    },
+    {
+     "start": 294.93,
+     "end": 307.898,
+     "at": 5.03331482509717,
+     "dur": 1.5269294836202114,
+     "atFrame": 151,
+     "frames": 46
+    },
+    {
+     "start": 307.898,
+     "end": 307.9,
+     "at": 6.560244308717381,
+     "dur": 0.0027762354247640206,
+     "atFrame": 197,
+     "frames": 1
+    },
+    {
+     "start": 307.9,
+     "end": 310.374,
+     "at": 6.563020544142145,
+     "dur": 3.4342032204330937,
+     "atFrame": 197,
+     "frames": 103
+    },
+    {
+     "start": 310.374,
+     "end": 310.376,
+     "at": 9.997223764575239,
+     "dur": 0.0027762354247640206,
+     "atFrame": 300,
+     "frames": 1
+    }
+   ],
+   "events": [
+    {
+     "t": 261777,
+     "agent": "agent-b",
+     "type": "thought",
+     "text": "I need to update the plan item with the given id and mark it as done.",
+     "ms": 22725,
+     "film": 1.5269294836202114,
+     "frame": 46
+    },
+    {
+     "t": 261778,
+     "agent": "agent-b",
+     "type": "call",
+     "tool": "update_plan_item",
+     "args": {
+      "id": "c13c45e6-d66c-4f78-aa54-7f2e533d0a1c",
+      "done": true
+     },
+     "film": 1.5283176013325934,
+     "frame": 46
+    },
+    {
+     "t": 261896,
+     "agent": "agent-b",
+     "type": "result",
+     "tool": "update_plan_item",
+     "text": "Not ticked: the context you picked this task up with has changed.\n- REPLACED: p. 9 \"Checkout: retry the payment call on 5xx\" was replaced by p. 11 \"Checkout: no automatic retries until charges are idempotent\" (note 0ec998cd-e062-4466-a3f0-465507393da8), now witnessed. Reached via this baton → task \"Add retry with backoff to checkout payment\" → p. 9.\nCall check_context to take the new context, check your work against it, then tick the task again.",
+     "isError": true,
+     "film": 1.6921154913936707,
+     "frame": 51
+    },
+    {
+     "t": 273463,
+     "agent": "agent-b",
+     "type": "thought",
+     "text": "I need to verify the context and update the plan item accordingly.",
+     "ms": 11565,
+     "film": 3.2190449750138823,
+     "frame": 97
+    },
+    {
+     "t": 273464,
+     "agent": "agent-b",
+     "type": "call",
+     "tool": "check_context",
+     "args": {},
+     "film": 3.2204330927262643,
+     "frame": 97
+    },
+    {
+     "t": 273532,
+     "agent": "agent-b",
+     "type": "result",
+     "tool": "check_context",
+     "text": "1 change since you were handed this work at 2026-10-18 11:51 UTC:\n- REPLACED: p. 9 \"Checkout: retry the payment call on 5xx\" was replaced by p. 11 \"Checkout: no automatic retries until charges are idempotent\" (note 0ec998cd-e062-4466-a3f0-465507393da8), now witnessed. Reached via this baton → task \"Add retry with backoff to checkout payment\" → p. 9.\n\nNew receipt f959e056-d7b3-4d2e-9509-fbf1f50987ad. The changed pages as they stand now:\n\n## p. 11: Checkout: no automatic retries until charges are idempotent (note 0ec998cd-e062-4466-a3f0-465507393da8)\nPOST /payments/charge has no idempotency key, so a retried 5xx can charge twice (ch_81, ch_82). Don't retry automatically until the API accepts Idempotency-Key.",
+     "isError": false,
+     "film": 3.314825097168241,
+     "frame": 99
+    },
+    {
+     "t": 294792,
+     "agent": "agent-b",
+     "type": "thought",
+     "text": "The context has been updated, I need to update the plan item with the new information.",
+     "ms": 21259,
+     "film": 4.841754580788452,
+     "frame": 145
+    },
+    {
+     "t": 294793,
+     "agent": "agent-b",
+     "type": "call",
+     "tool": "update_plan_item",
+     "args": {
+      "id": "c13c45e6-d66c-4f78-aa54-7f2e533d0a1c",
+      "done": true
+     },
+     "film": 4.843142698500834,
+     "frame": 145
+    },
+    {
+     "t": 294930,
+     "agent": "agent-b",
+     "type": "result",
+     "tool": "update_plan_item",
+     "text": "Task \"Add retry with backoff to checkout payment\": ticked done.\nhttp://localhost:3005/subjects/c89617f5-1682-43da-890f-a00283e194e0?open=task:c13c45e6-d66c-4f78-aa54-7f2e533d0a1c\nRecorded as done against receipt f959e056-d7b3-4d2e-9509-fbf1f50987ad: if a page in it changes, trace_task and the app will say so.",
+     "isError": false,
+     "film": 5.03331482509717,
+     "frame": 151
+    },
+    {
+     "t": 307898,
+     "agent": "agent-b",
+     "type": "thought",
+     "text": "The task has been marked as done, I should now report the completion.",
+     "ms": 12967,
+     "film": 6.560244308717381,
+     "frame": 197
+    },
+    {
+     "t": 307900,
+     "agent": "agent-b",
+     "type": "done",
+     "text": "",
+     "film": 6.563020544142145,
+     "frame": 197
+    }
+   ],
+   "speedup": 7.132499999999998,
+   "from": 2024,
+   "frames": 300,
+   "voiceAt": 12
+  },
+  {
+   "kind": "chapter",
+   "label": "traced",
+   "voice": "traced",
+   "seconds": 8.280000000000003,
+   "clips": [
+    {
+     "start": 310.376,
+     "end": 348.16,
+     "at": 0,
+     "dur": 1.0947115384615387,
+     "atFrame": 0,
+     "frames": 33
+    },
+    {
+     "start": 348.16,
+     "end": 348.162,
+     "at": 1.0947115384615387,
+     "dur": 0.0019903846153846157,
+     "atFrame": 33,
+     "frames": 1
+    },
+    {
+     "start": 348.162,
+     "end": 348.235,
+     "at": 1.0967019230769233,
+     "dur": 0.07264903846153847,
+     "atFrame": 33,
+     "frames": 2
+    },
+    {
+     "start": 348.235,
+     "end": 348.236,
+     "at": 1.1693509615384619,
+     "dur": 0.0009951923076923078,
+     "atFrame": 35,
+     "frames": 1
+    },
+    {
+     "start": 348.236,
+     "end": 349.563,
+     "at": 1.1703461538461541,
+     "dur": 1.3206201923076923,
+     "atFrame": 35,
+     "frames": 40
+    },
+    {
+     "start": 349.563,
+     "end": 351.95,
+     "at": 2.4909663461538463,
+     "dur": 2.375524038461539,
+     "atFrame": 75,
+     "frames": 71
+    },
+    {
+     "start": 351.95,
+     "end": 355.379,
+     "at": 4.8664903846153855,
+     "dur": 3.4125144230769235,
+     "atFrame": 146,
+     "frames": 102
+    },
+    {
+     "start": 355.379,
+     "end": 355.38,
+     "at": 8.27900480769231,
+     "dur": 0.0009951923076923078,
+     "atFrame": 248,
+     "frames": 1
+    }
+   ],
+   "events": [
+    {
+     "t": 348160,
+     "agent": "agent-a",
+     "type": "thought",
+     "text": "I need to supersede the note with new information about Idempotency-Key.",
+     "ms": 37783,
+     "film": 1.0947115384615387,
+     "frame": 33
+    },
+    {
+     "t": 348162,
+     "agent": "agent-a",
+     "type": "call",
+     "tool": "supersede_note",
+     "args": {
+      "id": "0ec998cd-e062-4466-a3f0-465507393da8",
+      "title": "Checkout: retry with an Idempotency-Key",
+      "body": "The payments API accepts Idempotency-Key. Retry up to 3 times on 5xx, reusing one key per checkout attempt.",
+      "repo": "acme/shop",
+      "files": [
+       "lib/checkout/pay.ts"
+      ]
+     },
+     "film": 1.0967019230769233,
+     "frame": 33
+    },
+    {
+     "t": 348235,
+     "agent": "agent-a",
+     "type": "result",
+     "tool": "supersede_note",
+     "text": "Saved \"Checkout: retry with an Idempotency-Key\" on page 12 to replace page 11 (\"Checkout: no automatic retries until charges are idempotent\"). Note id 35c56503-c8f0-4d80-9d12-1d229ff9a4e4.\nThe old note stays in search until the user witnesses this one.\nhttp://localhost:3005/inbox?note=35c56503-c8f0-4d80-9d12-1d229ff9a4e4\n\nOnce witnessed, this affects:\n- Task \"Add retry with backoff to checkout payment\" (done): task \"Add retry with backoff to checkout payment\" → p. 9\n- Baton \"Retry failed checkout payments with backoff\" (picked up): this baton → task \"Add retry with backoff to checkout payment\" → p. 9\n\nAgents working from it (or a page that leans on it):\n- agent-b: handed p. 11 at 2026-10-18 11:53 UTC (receipt f959e056-d7b3-4d2e-9509-fbf1f50987ad), still current",
+     "isError": false,
+     "film": 1.1693509615384619,
+     "frame": 35
+    },
+    {
+     "t": 348236,
+     "agent": "agent-a",
+     "type": "done",
+     "text": "",
+     "film": 1.1703461538461541,
+     "frame": 35
+    }
+   ],
+   "speedup": 5.4352657004830895,
+   "from": 2324,
+   "frames": 248,
+   "voiceAt": 12
+  },
+  {
+   "kind": "chapter",
+   "label": "who",
+   "voice": "who",
+   "seconds": 9.120000000000001,
+   "clips": [
+    {
+     "start": 355.38,
+     "end": 367.459,
+     "at": 0,
+     "dur": 1.142466689443116,
+     "atFrame": 0,
+     "frames": 34
+    },
+    {
+     "start": 367.459,
+     "end": 367.46,
+     "at": 1.142466689443116,
+     "dur": 0.0010386060813119236,
+     "atFrame": 34,
+     "frames": 1
+    },
+    {
+     "start": 367.46,
+     "end": 367.539,
+     "at": 1.1435052955244278,
+     "dur": 0.08204988042364196,
+     "atFrame": 34,
+     "frames": 2
+    },
+    {
+     "start": 367.539,
+     "end": 367.541,
+     "at": 1.2255551759480698,
+     "dur": 0.0020772121626238473,
+     "atFrame": 37,
+     "frames": 1
+    },
+    {
+     "start": 367.541,
+     "end": 370.04,
+     "at": 1.2276323881106936,
+     "dur": 2.595476597198497,
+     "atFrame": 37,
+     "frames": 78
+    },
+    {
+     "start": 370.04,
+     "end": 375.041,
+     "at": 3.8231089853091906,
+     "dur": 4.673727365903656,
+     "atFrame": 115,
+     "frames": 140
+    },
+    {
+     "start": 375.041,
+     "end": 376.544,
+     "at": 8.496836351212847,
+     "dur": 0.6231636487871541,
+     "atFrame": 255,
+     "frames": 19
+    }
+   ],
+   "events": [
+    {
+     "t": 367459,
+     "agent": "agent-b",
+     "type": "thought",
+     "text": "I need to search for pages mentioning payment retries and find out who knows about it.",
+     "ms": 12078,
+     "film": 1.142466689443116,
+     "frame": 34
+    },
+    {
+     "t": 367460,
+     "agent": "agent-b",
+     "type": "call",
+     "tool": "who_knows",
+     "args": {
+      "topic": "payment retries"
+     },
+     "film": 1.1435052955244278,
+     "frame": 34
+    },
+    {
+     "t": 367539,
+     "agent": "agent-b",
+     "type": "result",
+     "tool": "who_knows",
+     "text": "- p. 12 \"Checkout: retry with an Idempotency-Key\" (note 35c56503-c8f0-4d80-9d12-1d229ff9a4e4), replacing p. 11, p. 9. Files: lib/checkout/pay.ts\n  - agent-a wrote it\n  - agent-b was handed p. 11, since replaced: out of date\n- p. 10 \"Payments API: charge endpoint\" (note 9c3ac9b7-9944-4a8d-ac19-eca0910de439). Files: lib/payments/client.ts\n  - agent-a wrote it\n  - agent-b was handed it",
+     "isError": false,
+     "film": 1.2255551759480698,
+     "frame": 37
+    },
+    {
+     "t": 367541,
+     "agent": "agent-b",
+     "type": "done",
+     "text": "",
+     "film": 1.2276323881106936,
+     "frame": 37
+    }
+   ],
+   "speedup": 2.3206140350877194,
+   "from": 2572,
+   "frames": 274,
+   "voiceAt": 12
+  },
+  {
+   "kind": "proof",
+   "voice": "proof",
+   "from": 2846,
+   "frames": 341,
+   "voiceAt": 12
+  },
+  {
+   "kind": "close",
+   "voice": "close",
+   "from": 3187,
+   "frames": 246,
+   "voiceAt": 12
+  }
+ ]
+}
