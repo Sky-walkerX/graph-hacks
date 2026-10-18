@@ -1,7 +1,10 @@
 import prisma from "@/lib/prisma";
 import type { PinnedPage } from "@/lib/handoff/card";
 import { GraphUnavailable, read } from "./client";
-import { contextFor, diff, findReceipt, impactOf, linkDependency, recordReceipt, type Change, type Delivered, type Item, type Receipt } from "./context";
+import {
+  contextFor, diff, findReceipt, impactOf, linkDependency, outcomes, receiptForTask, recordOutcome, recordReceipt,
+  type Change, type Delivered, type Item, type Receipt,
+} from "./context";
 import { projectTask, syncedGraph } from "./project";
 
 // The manifest: what a baton's next agent is handed, worked out in the graph
@@ -60,16 +63,20 @@ export async function check(userId: string, agent: string, receiptId: string | u
 /** The changes since `agent` picked up the baton for a task, if it did. Null when it holds no receipt for it. */
 export async function changesForTask(userId: string, agent: string, taskId: string): Promise<Change[] | null> {
   const graph = await syncedGraph(userId);
-  const [r] = await read<{ id: string }>(
-    graph,
-    `MATCH (:Agent {name: $agent})-[:RECEIVED]->(r:Receipt)-[:FOR]->(:Handoff)-[:FOR]->(:Task {id: $task})
-     WHERE NOT ()-[:REFRESHES]->(r)
-     RETURN r.id AS id ORDER BY r.at DESC LIMIT 1`,
-    { agent, task: taskId },
-  );
-  if (!r) return null;
-  const found = (await findReceipt(graph, agent, r.id))!;
+  const id = await receiptForTask(graph, agent, taskId);
+  if (!id) return null;
+  const found = (await findReceipt(graph, agent, id))!;
   return diff(found.delivered, (await contextFor(graph, found.handoff)).items);
+}
+
+/** Records that `agent` finished a task against its current receipt for it. */
+export async function finished(userId: string, agent: string, taskId: string) {
+  return recordOutcome(await syncedGraph(userId), agent, taskId);
+}
+
+/** How a task was finished, or every finished task when none is named, with what changed since. */
+export async function traceOutcomes(userId: string, taskId?: string) {
+  return outcomes(await syncedGraph(userId), taskId);
 }
 
 export type Manifest = {

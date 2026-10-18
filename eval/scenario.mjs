@@ -131,6 +131,23 @@ async function main() {
   log(imp.text);
   expect(/Task "Add retry/.test(imp.text) && /codex: handed p. \d+ .*still current/.test(imp.text), "impact_of_change finds the task through the replaced page, and codex now current");
 
+  expect(/Recorded as done against receipt/.test(tick2.text), "the finished task is recorded against the receipt it was done with");
+
+  step(12, "Later the payments API gains idempotency keys; Claude Code replaces the no-retry decision and the user witnesses it.");
+  const again = await claude("supersede_note", {
+    id: replId,
+    title: "Checkout: retry with an Idempotency-Key",
+    body: "The payments API now accepts `Idempotency-Key`. Retry `POST /payments/charge` up to 3 times on 5xx, reusing one key per checkout attempt.",
+    repo: "acme/shop",
+    files: ["lib/checkout/pay.ts"],
+  });
+  await witness(idIn(again.text));
+
+  step(13, "The finished task is traced to the context it was finished against, and flagged.");
+  const trace = await claude("trace_task", {});
+  log(trace.text);
+  expect(/Add retry with backoff/.test(trace.text) && /may need another look/.test(trace.text) && /REPLACED/.test(trace.text), "trace_task flags finished work whose context changed after it was done");
+
   done();
 }
 

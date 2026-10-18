@@ -32,8 +32,8 @@ import { noteMarks, readById, readPlan } from "@/lib/mcp/read";
 import { captureSession } from "@/lib/notes/capture";
 import { clipPages, formatHandoff, type PinnedPage } from "@/lib/handoff/card";
 import { latestOpen, markPickedUp, pinnedPages, saveHandoff, type Find } from "@/lib/handoff/store";
-import { changesForTask, check, deliver, dependOn, impact } from "@/lib/graph/manifest";
-import { formatChanges, formatImpact, formatManifest } from "@/lib/graph/format";
+import { changesForTask, check, deliver, dependOn, finished, impact, traceOutcomes } from "@/lib/graph/manifest";
+import { formatChanges, formatImpact, formatManifest, formatOutcomes } from "@/lib/graph/format";
 
 // The notebook's MCP server: agents (Claude Code, Codex, Cursor…) list
 // subjects, search, read notes and plans, save and add to notes, edit the
@@ -607,6 +607,26 @@ const handler = createMcpHandler(
       },
     );
 
+    server.registerTool(
+      "trace_task",
+      {
+        title: "Trace finished work to the context it rested on",
+        description:
+          "For a task ticked done after picking up a baton: who finished it, when, the exact pages (and revisions) it was finished against, and whether any of them has been replaced, edited or withdrawn since, meaning the finished work may need another look. With no task_id, lists every finished task whose context has changed since.",
+        inputSchema: z.object({ task_id: z.string().min(1).max(64).optional().describe("The task's id; leave out for all finished work at risk") }),
+        annotations: { readOnlyHint: true },
+      },
+      async ({ task_id }, ctx) => {
+        const { userId } = caller(ctx.http?.authInfo);
+        const found = await traceOutcomes(userId, task_id);
+        const shown = task_id ? found : found.filter((o) => o.changes.length > 0);
+        if (shown.length === 0) {
+          return text(task_id ? `Task ${task_id} wasn't ticked done against a receipt (it wasn't picked up from a baton, or isn't done).` : "No finished work rests on a page that has changed since.");
+        }
+        return text(formatOutcomes(shown));
+      },
+    );
+
     server.registerPrompt(
       "pickup",
       {
@@ -794,7 +814,10 @@ const handler = createMcpHandler(
           }
           if (!updated) return failed(`No task or subtask with id ${id} in this notebook.`);
           const url = planItemUrl(origin, task.subjectId, "task", id);
-          return text(`Task "${updated.title}": ${changes}.${url ? `\n${url}` : ""}`);
+          // Finished work keeps the context it was finished against (trace_task).
+          const against = done === true ? await finished(userId, source, id).catch(() => null) : null;
+          const traced = against ? `\nRecorded as done against receipt ${against}: if a page in it changes, trace_task and the app will say so.` : "";
+          return text(`Task "${updated.title}": ${changes}.${url ? `\n${url}` : ""}${traced}`);
         }
         if (subtask) {
           let updated = add_notes !== undefined ? await appendToSubtask(userId, id, add_notes) : null;

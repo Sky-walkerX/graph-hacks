@@ -1,7 +1,7 @@
 "use client";
 
 import { useAgo } from "@/app/components/clock";
-import { useManifests, type ManifestRow } from "@/hooks/useHandoffs";
+import { useManifests, type ManifestRow, type OutcomeRow } from "@/hooks/useHandoffs";
 import { sourceLabel } from "@/lib/notes/source";
 
 // What each agent working from a baton was handed, and whether it still
@@ -132,9 +132,30 @@ function Receipt({ m }: { m: ManifestRow }) {
   );
 }
 
+/** A finished task whose context changed after it was ticked done. */
+function AtRisk({ o }: { o: OutcomeRow }) {
+  const ago = useAgo();
+  return (
+    <li className="lk-manifest">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="lk-baton-from">
+          <b>{sourceLabel(o.agent)}</b> finished this {ago(new Date(o.at))}, against receipt {o.receipt.slice(0, 8)}
+        </p>
+        <span className="lk-manifest-stamp lk-manifest-stamp-stale">Review</span>
+      </div>
+      <p className="lk-manifest-goal">{o.task.title}</p>
+      <ul className="lk-manifest-changes">
+        {o.changes.map((c, i) => (
+          <ChangeLine key={i} c={c} />
+        ))}
+      </ul>
+    </li>
+  );
+}
+
 export function ManifestCard() {
   const { data } = useManifests();
-  if (!data || (data.available && data.manifests.length === 0)) return null;
+  if (!data || (data.available && data.manifests.length === 0 && data.atRisk.length === 0)) return null;
   const stale = data.manifests.filter((m) => m.changes.length > 0).length;
   return (
     <section aria-label="Context manifests" className="lk-hero px-4 py-3">
@@ -154,6 +175,16 @@ export function ManifestCard() {
             <Receipt key={m.receipt.id} m={m} />
           ))}
         </ul>
+      )}
+      {data.atRisk.length > 0 && (
+        <>
+          <h3 className="lk-manifest-sub">Finished work resting on pages that changed since</h3>
+          <ul className="grid">
+            {data.atRisk.map((o) => (
+              <AtRisk key={`${o.task.id}-${o.receipt}`} o={o} />
+            ))}
+          </ul>
+        </>
       )}
     </section>
   );
