@@ -66,3 +66,7 @@ service/.pytest_cache/
 
 # design prototypes and review captures (impeccable)
 .impeccable/
+
+# the motion graphics project (video/): its dependencies and scratch renders
+/video/node_modules
+/video/out

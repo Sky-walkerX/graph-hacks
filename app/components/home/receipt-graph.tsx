@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/fetcher";
 import { sourceLabel } from "@/lib/notes/source";
+import { pageLabel } from "@/lib/notes/page-label";
 import type { View, ViewEdge, ViewNode } from "@/lib/graph/view";
 
 // One receipt, drawn from what the graph returns for it (lib/graph/view.ts):
@@ -84,18 +85,22 @@ const edgeClass = (e: ViewEdge) =>
 
 const edgeLabel = (e: ViewEdge) => (e.type === "SUPERSEDES" ? (e.accepted ? "replaces" : "proposes to replace") : e.type.toLowerCase().replace("_", " "));
 
+/** A node's printed kind (condensed caps) and its title. */
 function nodeText(n: ViewNode): [string, string] {
   switch (n.kind) {
     case "Agent":
-      return [sourceLabel(n.label), "agent"];
+      return ["Agent", sourceLabel(n.label)];
     case "Receipt":
-      return [`Receipt ${n.id.slice(0, 8)}`, "what was handed over"];
+      return ["Receipt", n.id.slice(0, 8)];
     case "Handoff":
-      return [clip(n.label, 27), "baton"];
+      return ["Baton", clip(n.label, 26)];
     case "Task":
-      return [clip(n.label, 27), "task"];
+      return ["Task", clip(n.label, 26)];
     default:
-      return [clip(n.label, 27), `${n.page != null ? `p. ${n.page}` : "note"}${n.witnessed === false ? " · not witnessed" : ""}${n.deleted ? " · deleted" : ""}`];
+      return [
+        `${n.page != null ? pageLabel(n.page) : "Note"}${n.witnessed === false ? " · awaiting witness" : ""}${n.deleted ? " · deleted" : ""}`,
+        clip(n.label, 26),
+      ];
   }
 }
 
@@ -113,7 +118,7 @@ export function ReceiptGraph({ receiptId }: { receiptId: string }) {
   const lit = (e: ViewEdge) => hover !== null && (e.from === hover || e.to === hover);
   return (
     <figure className="lk-graph">
-      <div className="lk-graph-scroll">
+      <div className="lk-graph-scroll lk-paper">
         <svg
           viewBox={`0 0 ${laid.width} ${laid.height}`}
           // Scales down to the panel; below 420px wide it scrolls instead of shrinking further.
@@ -143,7 +148,7 @@ export function ReceiptGraph({ receiptId }: { receiptId: string }) {
           })}
           {data.nodes.map((n) => {
             const p = laid.pos.get(n.id)!;
-            const [title, sub] = nodeText(n);
+            const [kind, title] = nodeText(n);
             const cls = [
               "lk-graph-node",
               `lk-graph-${n.kind.toLowerCase()}`,
@@ -154,11 +159,11 @@ export function ReceiptGraph({ receiptId }: { receiptId: string }) {
             return (
               <g key={n.id} transform={`translate(${p.x} ${p.y})`} className={cls} onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}>
                 <rect width={W} height={H} rx={2} />
-                <text x={8} y={18} className="lk-graph-title">
-                  {title}
+                <text x={10} y={17} className="lk-graph-kind">
+                  {kind}
                 </text>
-                <text x={8} y={34} className="lk-graph-sub">
-                  {sub}
+                <text x={10} y={35} className={n.kind === "Note" ? "lk-graph-title lk-graph-title-note" : "lk-graph-title"}>
+                  {title}
                 </text>
                 <title>{`${n.kind}: ${n.label}`}</title>
               </g>
