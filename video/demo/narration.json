@@ -1,0 +1,14 @@
+[
+  { "id": "open", "exaggeration": 0.6, "text": "This is LockIn Manifest: handoffs between coding agents that know when they've gone stale. Built on FalkorDB, for Graph Hacks." },
+  { "id": "lockin", "exaggeration": 0.5, "text": "LockIn is a notebook your AI tools write to. Agents save what they learn over MCP, you witness it, and one agent can hand its work to the next with a baton. But a baton is a snapshot, and decisions keep moving." },
+  { "id": "real", "exaggeration": 0.45, "text": "Everything you'll see next is real. Two local agents, a three billion parameter Qwen model running on a CPU, calling LockIn's tools. Their thinking time is sped up." },
+  { "id": "decide", "exaggeration": 0.5, "text": "Agent A records a decision: retry the payment call on any server error. It lands in the notebook awaiting witness, and I sign off on it." },
+  { "id": "handoff", "exaggeration": 0.5, "text": "It plans the work, tells the graph that the task depends on that decision, and then runs out of usage, so it leaves a baton." },
+  { "id": "pickup", "exaggeration": 0.55, "text": "Agent B picks it up. FalkorDB walks from the baton, through the task, to the decision it rests on, and keeps a receipt of exactly which version of each page it handed over." },
+  { "id": "change", "exaggeration": 0.65, "text": "Then Agent A finds the payments API isn't idempotent. A retry can charge a customer twice. It writes a replacement, I witness it, and Agent B's receipt goes out of date. Here's the graph behind it: the baton, the task, the old page, and the one that replaced it." },
+  { "id": "refused", "exaggeration": 0.7, "text": "Agent B finishes the old plan and tries to tick the task done. LockIn refuses, and names the change. The agent takes the new context, and then the task goes through, recorded against the receipt it was done with." },
+  { "id": "traced", "exaggeration": 0.55, "text": "Later, the decision changes again. The finished task is flagged for review, because what it rested on no longer stands." },
+  { "id": "who", "exaggeration": 0.5, "text": "And for the team: who knows about payment retries, which version each agent holds, and which decisions the most work rests on, ranked with FalkorDB's PageRank." },
+  { "id": "proof", "exaggeration": 0.6, "text": "On twelve frozen test cases, the original LockIn got five right. LockIn Manifest gets all twelve. With eight agents racing for one baton, the original handed it to up to eight of them. Now, exactly one." },
+  { "id": "close", "exaggeration": 0.55, "text": "LockIn Manifest. Your agents hand off, and the graph keeps the receipts. The code, the queries, and a one command setup are on GitHub." }
+]
