@@ -2,9 +2,9 @@
 
 Research date: **18 October 2026**. Planning checkpoint: approximately **13:26 IST**.
 
-Target directory: `/Users/skywalker/Coding/Dev/Hackathons/we-make-devs`.
+Repository: [Sky-walkerX/graph-hacks](https://github.com/Sky-walkerX/graph-hacks).
 
-Status: **research and proposed design only**. No application copied, implementation started, Git repository initialized, deployment changed, or submission made as part of this research.
+Status: sections 1–21 are the original research and design (about 13:26 IST). Sections 22–25, added at about 15:30 IST, refresh the competitor sweep, add past winners of similar tracks, and rank the features to build. The LockIn foundation is imported (commit `99e7e3a`) and FalkorDB runs in `docker-compose.yml`; no graph feature is implemented yet.
 
 ## 1. Recommendation
 
@@ -530,7 +530,90 @@ The official page advertises a blog side prize. A useful article would explain a
 
 The strongest next implementation objective is therefore: **a stale handoff becomes an accurate, acknowledged continuation, with the affected work and source revisions visible.**
 
-## 20. Research search log
+## 22. Competitors update (about 15:10 IST)
+
+All capabilities are **author-reported** from READMEs; live URLs were checked only for an HTTP 200, not for working demos.
+
+**The field is large.** A GitHub search for repositories pushed since 14 October that mention `falkordb` returns about 329 results, 83 of them pushed after 13:26 IST today. At least six entries now overlap directly with change-aware handoffs, impact maps and context receipts. Three other entries are already named "Relay".
+
+| Project | Track(s) | Pitch | Graph use | Polish | Overlap |
+|---|---|---|---|---|---|
+| [sahil1330/ripple][C01] | 01+02+03 | Company brain that remembers which fact version it told people and agents, and returns to correct it | `FactVersion` + `SUPERSEDES`, `WAS_TOLD`/`CACHED` edges, `IMPACTS`, atomic task claims, `check_fresh` MCP guard, graph per tenant | Live on Railway; video TODO | **H**: receipts + impact, for policy facts |
+| [Lecrupus/hivemind][C02] | 02 | Time-aware shared memory for Claude Code, Cursor, Codex | Bi-temporal facts, `Handoff-[:CARRIES]->Fact`, atomic `CLAIM_TASK`, `why()` provenance, PageRank/WCC, graph per workspace | Live; 2-min video; ~1,300 ops/s at 100 agents; Track 02 bullet table | **H** |
+| [Quantapixel/hivemind][C03] | 02 | Shared brain for several coding agents on one repo | Call graph, `shortestPath` conflict warnings, decisions with `SUPERSEDES` | Live; two videos; CLI | **H** |
+| [blackstackdev/agent-office-relay][C04] | 02+03 | Source-linked handoffs with human approval | Policy amendment marks the old packet outdated; Cypher catalogue | Local only; pages demo | **H** concept, M polish |
+| [Aryan7098/codemem][C05] | 02 | Evidence-backed memory for coding agents | `SUPPORTED_BY` evidence, git change → stale blast radius, `Handoff-[:REFERENCES_MEMORY]` | No video or live URL | **H** concept, low polish |
+| [tharunkumardeveloper/The-Final-Boss][C06] ("Relay"/WiFight) | 02 | Agents that never message each other yet never contradict | Time-aware memory, graph per tenant, `algo.maxFlow`, 14 MCP tools | Very polished; live; blog; 99.4% vs 61.3% claim; 0 duplicates with 8 writers | **H** for the T02 prize |
+| [PratikPawar1401/relay-agent-memory][C07] | 02 | Incident memory that survives a handoff | Fencing claims; stores selected IDs, context hash and source revision before the model call | Local only; created today | **M–H**: has receipts |
+| [Vaibhaav-Tiwari/lineage][C08] | 02+03 | Company brain that un-learns | Reversed decision → walk to answers, beliefs, queued actions | Live | **M–H** |
+| [lurui1997/rationale-guard][C09] | 01, 02, 03 | Shows which past decision a PR breaks | `File←TOUCHES←PR←DERIVED_FROM←Decision`, PageRank to choose who to ask, GitHub Action | Created today | **M** |
+| Cascade cluster: [Quorum][C10], [Pedigree][C11], [Kintsugi][C12], [RETCON][C13] | 02 | "Git revert" for agent beliefs | Provenance DAG walks; `GRAPH.COPY` preview | Kintsugi live + video; RETCON blog | **M**: they own "cascade invalidation" |
+| Collision prevention: [Switchboard][C14], [Airspace][C15], [Pheromone][C16] | 02 | Stop parallel coding agents colliding | Import/code graph claims | Two live | **M/L**: crowded |
+| [zeyusuntt/inherit-brain][C17] | 03 | Ask the product you inherited | 9 read-only Cypher tools; evaluated on 1,203 held-out questions | Video + blog | **L** overlap, strong T03 rival |
+
+Others: [Vaibhav91one/ripple][C18], [undograph][C19], [relayops][C20], [recallbrake][C21], [relay-graph][C22], [ResultRipple][C23], [what-leaves-with-them][C24], plus many Track 03 "keep knowledge current" entries (Strata, Gary, Tombstone, Staleproof, Chronos, Workweave). Of the projects in section 4, none showed a push after 13:26 IST; Crew Memory Graph's live site returned 502 at 15:05 IST and GraphDispatch's video is still a placeholder.
+
+**Gaps nobody fills well (proposed reading of the sample):**
+
+1. **Receipts that act, for coding-agent handoffs.** Ripple tracks what people were told; PratikPawar/Relay hashes context for incidents; Hivemind records which handoffs carried a fact. None shows: handoff receipt → decision superseded → "agent B is on revision 2, current is 3" → diff → re-brief → acknowledgement.
+2. **Human witness as graph state.** Others script approval or use a queue. LockIn's witness workflow can decide what is delivered as accepted and answer "who witnessed what".
+3. **Point-in-time replay:** "what did the agent know when it did X". Receipts and revision history make this cheap.
+4. **Published concurrency numbers.** Only Hivemind and WiFight give figures, and Track 02 asks for them.
+5. **Real dogfood data.** Nearly every rival uses a synthetic company. A graph of our own build's notes and handoffs would stand out.
+6. **Naming.** Avoid "Relay": three entries already use it.
+
+## 23. What won similar tracks
+
+| Event | Winner | Magic moment | Why it won |
+|---|---|---|---|
+| WeMakeDevs × Cognee (graph memory, Jun–Jul 2026), Track 1 | [Lethe][W01] | Forget a component → receipt of nodes/edges/vectors removed → re-ask gives the right answer | Organizer: "makes forgetting a product feature… re-queries to prove the removal" [W02]. Blind-judge benchmark vs RAG that reports ties and losses, honest limits, AI disclosure |
+| Same, Track 2 | [Classroom Memory][W03] | "Class is failing recursion → teach functions first" from the prerequisite graph | Per-student private memory plus a shared graph; 12-check live verification script [W02] |
+| FalkorDB "Memory Meets Motion" (Aug 2026), 1st | [Atrium][W04] | Same score, different misconceptions → grouped by a two-hop traversal | "A flat table or a vector search simply cannot express" it [W05] |
+| Same, standouts | [Hopper][W06], [Drift][W07], [Oto.ai][W08] | "No path found = proof of safety"; meeting contradicts an earlier decision → issue updated behind approval; agent resumes a developer's session from a task graph and opens a PR saying what it inherited | FalkorDB's own write-up [W05]. Oto.ai is the closest analogue to LockIn |
+| Neo4j Aura Agent Hackathon 2026, 1st–3rd | ConspiracyGraph, RegulatoryRisk, Korca Triage | Claim related to fact-checks and frames; who-knows-what routing | "originality of the use case, the quality of the graph model… practical business value" [W09] |
+| WeMakeDevs × Coral (May 2026) | [Manthan][W10] | One click resolves an $8,400 dispute to a cited $560 credit after approval | Inferred: real business case, one-click demo, polish [W11] |
+| MCP 1st Birthday (Nov 2025), Best Overall | [Cite-Before-Act][W12] | Human approval before any state-changing MCP call | Published criteria: completeness, UX, functionality, creativity, docs, impact [W13] |
+
+**WeMakeDevs' published rubric for a graph-memory event** (Cognee): potential impact, creativity, technical excellence, best use of the sponsor (depth of its APIs), UX, presentation (demo, README, submission). [W14] Their 2026 write-ups keep praising provable claims (receipts, re-queries, verification scripts), refusing to guess, human approval gates and structural guards, and honest limits. [W02] [W15] (Inferred as a consistent taste.)
+
+**Patterns that win:** one graph-only magic moment shown before/after; the graph model shown and justified with named Cypher queries; provenance on every answer; memory lifecycle rather than storage; a small honest evaluation; human gates; a one-click seeded demo with a live URL and a ~2–3 minute video; the README as the pitch.
+
+**Anti-patterns:** graph as decoration, or a product that still works without FalkorDB (rule 3); chat-over-docs a vector store could do; feature sprawl without one story; claims without proof; localhost-only demo; a README without the graph model; one giant final commit.
+
+## 24. Ranked feature shortlist for Tracks 02 + 03
+
+Scores are proposed judgments (5 = best; for risk, 5 = safest within about 8 hours). Judge appeal follows sections 22–23.
+
+| # | Feature | Track bullets | Judge appeal | Graph necessity | Distinct | Demo clarity | Build risk | Extends |
+|---|---|---|---|---|---|---|---|---|
+| 1 | **Context receipts + stale-handoff re-brief.** `pickup_handoff` resolves context through the graph and writes a `Receipt` (`DELIVERED` revision IDs + hashes). When an accepted replacement lands later, `check_receipt` returns "you're on rev 2, current is rev 3", the diff, and the impact path; the agent acknowledges a fresh receipt | 02 shared state & handoffs; 03 keeping knowledge current, tracing to source | 5 | 5 | 5 | 5 | 3 | `app/api/mcp/route.ts`, `lib/handoff/store.ts`, new `lib/graph/` |
+| 2 | **Witness-gated memory as graph state.** Witnessing a replacement (existing UI) projects `SUPERSEDES {accepted:true}`; unwitnessed proposals are delivered as provisional, never as accepted; "who witnessed what" query | 02 memory updates over time; 03 who knows what, sources | 4 | 4 | 5 | 5 | 4 | `lib/notes/status.ts`, `lib/notes/write.ts`, `app/api/milestones/[id]/route.ts` |
+| 3 | **Impact map.** Bounded reverse walk `Decision ←DEPENDS_ON* Task ←FOR Handoff` from a changed decision; preview before acceptance, "context changed" badge after; small panel shows the actual returned path | 03 tracing decisions; 02 shared state | 5 | 5 | 3 | 5 | 3 | `lib/notes/related.ts` (candidates only), new MCP `link_dependency`, `app/components/home/contents.tsx` |
+| 4 | **Atomic claims + concurrency proof.** Fix the unchecked `markPickedUp` result; N-agent claim race and receipt-write benchmark against FalkorDB, published with numbers | 02 high-concurrency reads/writes | 4 | 3 | 3 | 4 | 5 | `app/api/mcp/route.ts`, new `eval/` |
+| 5 | **Graph per user/tenant.** Graph name derived from the authenticated user; isolation test with overlapping IDs/titles | 02 separate memory per user/tenant | 3 | 4 | 2 | 3 | 5 | new `lib/graph/client.ts` |
+| 6 | **Episodic / semantic / procedural mapping.** Sessions + handoffs (episodic), witnessed notes/decisions (semantic), `tried` entries as scoped `Attempt` nodes recalled when their assumptions still hold (procedural) | 02 episodic, semantic, procedural; persistent history | 4 | 4 | 3 | 3 | 3 | `lib/notes/capture.ts`, `lib/handoff/card.ts` |
+| 7 | **Company Brain layer: who owns / knows what, cited Ask.** Traversals over Agent/User/File/Decision/Handoff ("who last decided anything about `lib/payments`", "which agents were told the old policy"); Ask answers cite graph paths | 03 who owns/knows, answers with sources, docs/tickets/chats in one graph | 4 | 5 | 3 | 4 | 3 | `lib/chat/retrieve.ts`, new MCP `who_knows` |
+| 8 | **Point-in-time replay.** "What did agent B know when it closed task X": render the receipt as of then vs now | 02 persistent history; 03 tracing | 4 | 4 | 4 | 4 | 3 | receipts from #1 |
+| 9 | **Honest evaluation + verification script.** 12 frozen fixtures (section 13) against real FalkorDB; one real Claude Code continuation; report ties and failures | All (presentation) | 5 | — | 3 | 3 | 4 | new `eval/` |
+| 10 | **Dogfood graph.** Seed the demo from LockIn's own hackathon-build notes and handoffs, labelled as such | Presentation, 03 | 3 | — | 4 | 3 | 4 | seed script |
+| 11 | **Submission package + blog.** README with graph model, Cypher catalogue, track-bullet table, reuse disclosure; 2–3 min video; live GCP URL; dev.to post for the blog prize | Required | 5 | — | — | 5 | 4 | `README.md`, `deploy/gcp/` |
+
+**Deferred:** cascade invalidation as the headline (Quorum, Pedigree, Kintsugi and RETCON own it), edit-collision prevention (crowded), 3D/generic graph views, broad document ingestion, learned playbooks, branch-aware memory.
+
+**Positioning:** lead with *a handoff that knows when it went stale, and a receipt that proves what the next agent was told*. Brand it as LockIn (for example "LockIn Baton"), not "Relay".
+
+## 25. Recommended build cut for about 8 hours
+
+| Order | Scope | Rough time |
+|---|---|---|
+| 1 | `lib/graph/` client, per-user graph (#5), projection of notes, witnessed `SUPERSEDES`, handoffs (#2) | 1.5 h |
+| 2 | Receipts on pickup, `check_receipt` diff and re-brief (#1), atomic claim fix (#4 part) | 1.5 h |
+| 3 | `link_dependency` + impact query and panel (#3) | 1.5 h |
+| 4 | Fixtures, claim race numbers, one real agent continuation (#9, #4) | 1 h |
+| 5 | Deploy to GCP, README, video (#11) | 1.5–2 h |
+| Stretch | #7 who-knows-what + cited Ask, #8 replay, #6 attempts, blog | if time remains |
+
+
 
 Representative queries used on 18 October 2026:
 
@@ -586,6 +669,45 @@ All sources below were accessed or inspected on 18 October 2026. Repository and 
 | S27 | [Threadline repository][S27] | First-party corroboration of project and demo link |
 | S28 | [Cairn repository][S28] | First-party corroboration of event project |
 
+[C01]: https://github.com/sahil1330/ripple
+[C02]: https://github.com/Lecrupus/hivemind
+[C03]: https://github.com/Quantapixel/hivemind
+[C04]: https://github.com/blackstackdev/agent-office-relay
+[C05]: https://github.com/Aryan7098/codemem
+[C06]: https://github.com/tharunkumardeveloper/The-Final-Boss
+[C07]: https://github.com/PratikPawar1401/relay-agent-memory
+[C08]: https://github.com/Vaibhaav-Tiwari/lineage
+[C09]: https://github.com/lurui1997/rationale-guard
+[C10]: https://github.com/HamzaShaikh-source/Quorum-falkordb
+[C11]: https://github.com/Vedant817/pedigree
+[C12]: https://github.com/Itz-Agasta/kintsugi
+[C13]: https://github.com/mtrx28/retcon
+[C14]: https://github.com/bhargava-gumpula/graph-hacks
+[C15]: https://github.com/sushanshetty1/airspace
+[C16]: https://github.com/karankartikeya/pheromone
+[C17]: https://github.com/zeyusuntt/inherit-brain
+[C18]: https://github.com/Vaibhav91one/ripple
+[C19]: https://github.com/Tejas-Sands/undograph
+[C20]: https://github.com/dan-el-7/relayops
+[C21]: https://github.com/avinashnegi1999/recallbrake
+[C22]: https://github.com/ahirmaan/relay-graph
+[C23]: https://github.com/Asembris/ResultRipple
+[C24]: https://github.com/retailbox-automation/what-leaves-with-them
+[W01]: https://github.com/vinayaksonthalia/lethe
+[W02]: https://archive.wemakedevs.org/hackathons/cognee/projects
+[W03]: https://github.com/RajdeepKushwaha5/ClassroomMemory
+[W04]: https://github.com/nathansso/Atrium
+[W05]: https://www.falkordb.com/blog/memory-meets-motion-the-falkordb-standouts/
+[W06]: https://github.com/vraj00222/hopper
+[W07]: https://github.com/sharique2004/mmm-demo
+[W08]: https://github.com/KrishnaJ-bit/Memory_Meets_Motion
+[W09]: https://community.neo4j.com/t/aura-agent-hackathon-winners-announced/79568
+[W10]: https://github.com/akash-mondal/manthan
+[W11]: https://archive.wemakedevs.org/hackathons/coral/projects
+[W12]: https://huggingface.co/spaces/MCP-1st-Birthday/cite-before-act-mcp
+[W13]: https://huggingface.co/MCP-1st-Birthday
+[W14]: https://archive.wemakedevs.org/hackathons/cognee
+[W15]: https://www.wemakedevs.org/hackathons/trueforge/projects
 [S01]: https://www.wemakedevs.org/hackathons/falkordb/rules
 [S02]: https://www.wemakedevs.org/hackathons/falkordb
 [S03]: https://www.wemakedevs.org/hackathons/falkordb/schedule
