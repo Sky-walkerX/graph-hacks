@@ -22,7 +22,7 @@ function ChangeLine({ c }: { c: Change }) {
         <li>
           <span className="lk-manifest-tag">Replaced</span> {pageOf(c.was)} “{c.was.title}” <span aria-hidden>→</span>{" "}
           <b>{pageOf(c.now)}</b> “{c.now.title}”
-          <Path via={c.now.via} then={pageOf(c.now)} />
+          <Path via={c.now.via} then={c.now.replaces ? c.now.replaces.chain.slice(1).map((p) => `p. ${p}`).join(" → ") : pageOf(c.now)} />
         </li>
       );
     case "edited":

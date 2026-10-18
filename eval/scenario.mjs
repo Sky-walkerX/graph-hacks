@@ -143,6 +143,16 @@ async function main() {
   log(trace.text);
   expect(/Add retry with backoff/.test(trace.text) && /may need another look/.test(trace.text) && /REPLACED/.test(trace.text), "trace_task flags finished work whose context changed after it was done");
 
+  step(14, "Who knows about payment retries? The graph answers with the page that stands, and who holds which version.");
+  const who = await claude("who_knows", { topic: "payment retries" });
+  log(who.text);
+  expect(/Idempotency-Key/.test(who.text.split("\n")[0]) && /codex was handed p\. 11, since replaced: out of date/.test(who.text), "who_knows finds the current decision and marks codex's version out of date");
+
+  step(15, "Which decisions does the most work rest on?");
+  const keys = await claude("keystone_decisions", {});
+  log(keys.text);
+  expect(/^1\. p\. \d+ "Checkout: retry with an Idempotency-Key"/m.test(keys.text), "keystone_decisions ranks the retry decision first, credited to the page that stands");
+
   done();
 }
 

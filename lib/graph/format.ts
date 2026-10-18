@@ -1,4 +1,5 @@
 import type { Change, Impact, Item, Outcome, Receipt, Step } from "./context";
+import type { Keystone, Known } from "./brain";
 
 // The manifest, its changes and a note's impact, as an agent reads them in an
 // MCP reply. Pure, so it's tested alone.
@@ -89,4 +90,33 @@ export function formatOutcomes(found: Outcome[]): string {
       return [`# Task "${o.task.title}" (task ${o.task.id})`, `Finished by ${o.agent} at ${at} UTC, against receipt ${o.receipt}:`, ...pages, "", verdict].join("\n");
     })
     .join("\n\n");
+}
+
+/** What the notebook knows about a topic or file, and who knows it. */
+export function formatKnown(found: Known[], asked: string): string {
+  if (found.length === 0) return `Nothing in the notebook is about ${asked}.`;
+  return found
+    .map((k) => {
+      const head = `- ${page(k.note)} (note ${k.note.id})${k.note.witnessed ? "" : ", not witnessed yet"}${k.replaced.length ? `, replacing ${k.replaced.map((p) => `p. ${p}`).join(", ")}` : ""}${k.files.length ? `. Files: ${k.files.join(", ")}` : ""}`;
+      const who = k.knowers.map((w) =>
+        w.how === "recorded"
+          ? `  - ${w.agent} wrote it`
+          : `  - ${w.agent} was handed ${w.current ? "it" : `p. ${w.page}, since replaced: out of date`}`,
+      );
+      if (!k.note.source) who.unshift("  - you wrote it");
+      return [head, ...who].join("\n");
+    })
+    .join("\n");
+}
+
+/** The decisions the most work rests on. */
+export function formatKeystones(found: Keystone[]): string {
+  if (found.length === 0) return "No decision has anything depending on it yet (link_dependency records that).";
+  return [
+    "Decisions the most work rests on (PageRank over DEPENDS_ON, credited to the page that stands now):",
+    ...found.map(
+      (k, i) =>
+        `${i + 1}. ${page(k.note)} (note ${k.note.id}): score ${k.score.toFixed(3)}, ${k.openWork} open task${k.openWork === 1 ? "" : "s"} or baton${k.openWork === 1 ? "" : "s"}${k.agents.length ? `, agents working from it: ${k.agents.join(", ")}` : ""}`,
+    ),
+  ].join("\n");
 }

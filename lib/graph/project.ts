@@ -27,6 +27,10 @@ export const revision = (title: string, notes: string) =>
 // back. Writing a note twice is harmless.
 const OVERLAP_MS = 5_000;
 const BATONS = 200;
+/** Bumped when what a note's node holds changes, so existing graphs project every note again. */
+const VERSION = 2;
+/** How much of a note's text its node keeps, for full-text search. */
+const SUMMARY = 600;
 
 const syncing = new Map<string, Promise<Graph>>();
 
@@ -42,8 +46,11 @@ export function syncedGraph(userId: string): Promise<Graph> {
 
 async function sync(userId: string): Promise<Graph> {
   const graph = await graphFor(userId);
-  const [meta] = await read<{ at: number | null }>(graph, "MATCH (m:Meta {key: 'sync'}) RETURN m.notesAt AS at");
-  const since = meta?.at ? new Date(meta.at - OVERLAP_MS) : null;
+  const [meta] = await read<{ at: number | null; version: number | null }>(
+    graph,
+    "MATCH (m:Meta {key: 'sync'}) RETURN m.notesAt AS at, m.version AS version",
+  );
+  const since = meta?.at && meta.version === VERSION ? new Date(meta.at - OVERLAP_MS) : null;
   const startedAt = Date.now();
 
   const notes = await prisma.milestone.findMany({
@@ -60,7 +67,8 @@ async function sync(userId: string): Promise<Graph> {
 
   const latest = notes.reduce((m, n) => Math.max(m, n.updatedAt.getTime()), meta?.at ?? 0);
   // Never past the moment this sync started reading.
-  await run(graph, "MERGE (m:Meta {key: 'sync'}) SET m.notesAt = $at, m.syncedAt = $now", {
+  await run(graph, "MERGE (m:Meta {key: 'sync'}) SET m.notesAt = $at, m.syncedAt = $now, m.version = $version", {
+    version: VERSION,
     at: Math.min(Math.max(latest, meta?.at ?? 0), startedAt),
     now: Date.now(),
   });
@@ -90,6 +98,7 @@ async function projectNotes(graph: Graph, notes: NoteRow[]) {
     id: n.id,
     page: n.page,
     title: n.title,
+    summary: n.notes.replace(/\s+/g, " ").trim().slice(0, SUMMARY),
     hash: revision(n.title, n.notes),
     // The user's own notes count as witnessed as they're written.
     witnessed: !isAgent(n.source) || n.witnessedAt !== null,
@@ -104,7 +113,7 @@ async function projectNotes(graph: Graph, notes: NoteRow[]) {
     graph,
     `UNWIND $rows AS r
      MERGE (n:Note {id: r.id})
-     SET n.page = r.page, n.title = r.title, n.hash = r.hash, n.witnessed = r.witnessed, n.source = r.source,
+     SET n.page = r.page, n.title = r.title, n.summary = r.summary, n.hash = r.hash, n.witnessed = r.witnessed, n.source = r.source,
          n.subjectId = r.subjectId, n.updatedAt = r.updatedAt, n.stale = r.stale, n.repo = r.repo, n.deleted = false
      WITH n
      OPTIONAL MATCH (n)-[e:SUPERSEDES|ABOUT_FILE]->()

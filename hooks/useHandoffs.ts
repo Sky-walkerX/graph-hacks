@@ -5,6 +5,7 @@ import type { listHandoffs } from "@/lib/handoff/store";
 import type { Attention } from "@/lib/notes/attention";
 import type { Manifest } from "@/lib/graph/manifest";
 import type { Outcome } from "@/lib/graph/context";
+import type { Keystone, Known } from "@/lib/graph/brain";
 
 type Json<T> = T extends Date ? string : T extends (infer U)[] ? Json<U>[] : T extends object ? { [K in keyof T]: Json<T[K]> } : T;
 export type HandoffRow = Json<Awaited<ReturnType<typeof listHandoffs>>[number]>;
@@ -59,5 +60,17 @@ export function useManifests() {
     queryFn: () => api.get<ManifestList>("/api/manifest"),
     refetchOnMount: "always",
     refetchInterval: 30_000,
+  });
+}
+
+export type BrainResult = Json<{ available: boolean; keystones: Keystone[]; known: Known[] }>;
+
+// Who knows what (q: a topic or a file), or with no q the decisions the most
+// work rests on. Read from the graph.
+export function useBrain(q: string) {
+  return useQuery({
+    queryKey: queryKeys.brain(q),
+    queryFn: () => api.get<BrainResult>(`/api/brain${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+    refetchOnMount: "always",
   });
 }

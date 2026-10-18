@@ -71,7 +71,7 @@ async function reach(graph: Graph, handoffId: string): Promise<Reached[]> {
 type Head = { id: string | null; page: number | null; title: string | null; hash: string | null; witnessed: boolean | null; chain: number[] };
 
 /** Each note followed through witnessed replacements to the pages that stand now. */
-async function resolve(graph: Graph, ids: string[]) {
+export async function resolve(graph: Graph, ids: string[]) {
   const rows = await read<{
     id: string; page: number | null; title: string; hash: string; witnessed: boolean; heads: Head[];
   }>(

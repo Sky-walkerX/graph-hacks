@@ -40,6 +40,8 @@ const INDEXES = [
   "CREATE INDEX FOR (f:File) ON (f.key)",
   "CREATE INDEX FOR (r:Repo) ON (r.name)",
   "CREATE INDEX FOR (m:Meta) ON (m.key)",
+  // who_knows searches what notes say (lib/graph/brain.ts).
+  "CALL db.idx.fulltext.createNodeIndex('Note', 'title', 'summary')",
 ];
 
 /** The account's graph, with its indexes in place. Throws when FalkorDB can't be reached. */
