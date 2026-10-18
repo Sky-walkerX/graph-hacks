@@ -117,7 +117,7 @@ export const Setup: React.FC = () => {
           { at: 172, text: "PASS ticking done against a changed context is refused", color: C.termGreen },
           { at: 178, text: "PASS trace_task flags finished work whose context changed", color: C.termGreen },
           { at: 184, text: "PASS who_knows marks codex's version out of date", color: C.termGreen },
-          { at: 192, text: "All 16 checks passed.", color: C.termGreen },
+          { at: 192, text: "All 21 checks passed.", color: C.termGreen },
           { at: 204, text: "Account: demo-…@example.com / manifest-demo-1", color: C.termMuted },
         ]}
       />

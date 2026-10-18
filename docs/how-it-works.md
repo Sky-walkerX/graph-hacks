@@ -22,13 +22,16 @@ One graph per account (`lockin_<userId>`). Postgres stays the authority on notes
 | `Handoff` | `id`, `goal`, `status` (OPEN, PICKED_UP, SUPERSEDED), `source`, `pickedUpBy` |
 | `Task` | `id`, `title`, `done` |
 | `Receipt` | `id`, `at`, `agent`, `handoff`, `warnings` |
-| `Agent`, `File`, `Repo`, `Meta` | name / key; `Meta {key: 'sync'}` holds the projection watermark |
+| `Attempt` | `id`, `text`, `at`, `source`: one "tried and ruled out" line of a baton, `TRIED` from it, `ON` its task, `ASSUMED` the pages that stood when it was left |
+| `Answer` | `id`, `at`, `chat`, `chatTitle`, `question`, `excerpt`: one Ask reply, `CITES` the notes and documents it cites |
+| `Doc` | `id`, `page`, `title`, `summary`, `url`: a saved link or PDF, full-text indexed |
+| `Agent`, `File`, `Repo`, `Meta` | name / key; `Meta` holds the projection watermarks |
 
 `SUPERSEDES.accepted` is true only once the replacing note is witnessed. An agent can propose retiring a page, but only you retire it.
 
 ## The queries
 
-All parameterized, all in `lib/graph/context.ts`. Traversals are bounded: 4 hops for context, 8 for a replacement chain, 12 pages per manifest.
+All parameterized, in `lib/graph/`. Traversals are bounded: 4 hops for context, 8 for a replacement chain, 12 pages per manifest.
 
 **What a baton reaches, and why**: the start of every pickup:
 
@@ -54,8 +57,10 @@ RETURN id, collect(DISTINCT {id: cur.id, page: cur.page, title: cur.title, hash:
 
 ```cypher
 UNWIND $ids AS id
-MATCH (n:Note {id: id})<-[:SUPERSEDES {accepted: false}]-(p:Note)
-WHERE p.deleted = false
+MATCH (n:Note {id: id})
+WITH id, n               // step out from the index: as one pattern, the planner scans every note
+MATCH (n)<-[s:SUPERSEDES]-(p:Note)
+WHERE s.accepted = false AND p.deleted = false
 RETURN id, collect({id: p.id, page: p.page, title: p.title, source: p.source}) AS proposals
 ```
 
@@ -101,7 +106,11 @@ WHERE node.deleted = false
 RETURN node.id AS id, score ORDER BY score DESC LIMIT 20
 // resolved to the pages that stand now, then:
 UNWIND $ids AS id
-MATCH (n:Note {id: id})-[:SUPERSEDES*0..8]->(v:Note)<-[d:DELIVERED]-(r:Receipt)<-[:RECEIVED]-(a:Agent)
+MATCH (n:Note {id: id})
+WITH id, n
+MATCH (n)-[:SUPERSEDES*0..8]->(v:Note)
+WITH id, v
+MATCH (v)<-[d:DELIVERED]-(r:Receipt)<-[:RECEIVED]-(a:Agent)
 WHERE NOT ()-[:REFRESHES]->(r)
 RETURN id, a.name AS agent, max(r.at) AS at, d.page AS page, v.id = id AS current
 ```
@@ -125,6 +134,30 @@ MATCH (t:Task)-[o:DONE_WITH]->(r:Receipt) WHERE t.done = true
 RETURN t, o.agent, o.at, r.id, r.handoff
 ```
 
+**What was ruled out, and whether it still is** (`attemptsFor`): this baton's attempts and every earlier baton's on the same task, each with the pages it assumed and what replaced them since:
+
+```cypher
+MATCH (h:Handoff {id: $h})
+OPTIONAL MATCH (h)-[:TRIED]->(own:Attempt)
+OPTIONAL MATCH (h)-[:FOR]->(:Task)<-[:ON]-(same:Attempt)
+WITH collect(DISTINCT own) + collect(DISTINCT same) AS xs
+UNWIND xs AS x
+WITH DISTINCT x
+OPTIONAL MATCH (x)-[:ASSUMED]->(n:Note)
+OPTIONAL MATCH (n)<-[:SUPERSEDES {accepted: true}]-(newer:Note)
+RETURN x.id, x.text, x.source, collect(DISTINCT {page: n.page, title: n.title, newPage: newer.page, newTitle: newer.title}) AS premises
+```
+
+An attempt is linked to its premises once, when its baton is saved, so they stay the pages it was ruled out under.
+
+**Ask answers built on pages since replaced** (`lib/graph/ask.ts`): started from the replacements, so it never visits every answer:
+
+```cypher
+MATCH (a:Answer)-[:CITES]->(n:Note)<-[:SUPERSEDES {accepted: true}]-(:Note)
+RETURN DISTINCT a.id, a.question, n.id, n.page ORDER BY a.at DESC LIMIT 200
+// plus answers citing deleted pages; each cited page is then resolved to the one that stands now
+```
+
 **No dependency loops**:
 
 ```cypher
@@ -145,15 +178,15 @@ Without FalkorDB there's no manifest: pickup still hands over the baton's pinned
 |---|---|
 | **02** Shared state and handoffs between agents | Batons, graph-resolved context, receipts, `check_context` |
 | **02** Memory should persist, update over time | Notes, plus witnessed `SUPERSEDES` chains, followed at every pickup |
-| **02** High-concurrency reads and writes | Atomic claims; `eval/race.mjs`: 8 agents × 10 rounds, exactly one winner every round |
+| **02** High-concurrency reads and writes | Atomic claims; `eval/race.mjs`: 8 agents × 10 rounds, exactly one winner every round; `lib/graph/load.test.ts`: 100 agents at once, 450 graph operations a second |
 | **02** Separate memory per user or tenant | One FalkorDB graph per account, named from the signed-in user, never from agent input; tested |
-| **02** Episodic, semantic, procedural memory | Sessions and batons (episodic), witnessed notes and decisions (semantic), batons' "tried and ruled out" (procedural, in the card) |
+| **02** Episodic, semantic, procedural memory | Sessions and batons (episodic), witnessed notes and decisions (semantic), and ruled-out attempts (procedural): `Attempt` nodes tied to the decisions they assumed, handed to the next agent on the task and reopened when a premise is replaced |
 | **03** Tracing decisions back to their source | Every delivered page carries the path that made it relevant; receipts keep the exact revision |
 | **03** Keeping knowledge current as things change | Witnessed replacements change what's delivered; out-of-date receipts are flagged and refused at "done" |
 | **03** Who owns what, and who knows what | `who_knows`: full-text over decisions, then `RECORDED` (who wrote it) and `RECEIVED`/`DELIVERED` (who was told which version, and whether it still stands); `keystone_decisions`: PageRank over `DEPENDS_ON` |
 | **03** Answers with clear sources | Manifest lines, `trace_task` and the receipt table cite page, path and revision |
 | **03** Gets work done | The "done" guard and `trace_task` act on the graph, not just answer from it: stale work is refused or flagged |
-| **03** Knowledge from docs, tickets, chats in one graph | Partly: agents' notes, session summaries (captured by the plugin) and batons share one graph. External tickets and chat aren't ingested |
+| **03** Knowledge from docs, tickets, chats in one graph | Agents' notes, session summaries, batons, Ask answers (`CITES` what they cite) and saved documents (full-text) share one graph; answers citing replaced pages are flagged in the chat and by `stale_answers`. External ticket systems aren't ingested |
 
 ## Results
 
@@ -172,10 +205,20 @@ The original's pickup is a snapshot of the pinned pages, by design. These fixtur
 
 | Check | Result |
 |---|---|
-| Scenario (`eval/scenario.mjs`) | 16/16 checks pass |
-| Graph tests (`lib/graph/*.test.ts`, real FalkorDB) | 14/14 pass |
+| Scenario (`eval/scenario.mjs`) | 21/21 checks pass |
+| Graph tests (`lib/graph/*.test.ts`, real FalkorDB) | 23/23 pass |
 | Race, production Docker stack, 8 agents × 10 rounds | one winner every round; pickup p50 89 ms, p95 123 ms |
 | Race, production Docker stack, 16 agents × 10 rounds | one winner every round; pickup p50 144 ms, p95 197 ms; 16 concurrent `check_context` in 133 ms |
+
+**The graph alone, under load** ([`eval/LOAD.md`](../eval/LOAD.md), `lib/graph/load.test.ts`): a 5,000-note graph, agents picking up, checking context, asking what leans on a page and who knows a topic, on a 4-core machine shared by the test and FalkorDB:
+
+| Agents at once | Graph operations a second | p50 | p95 |
+|---:|---:|---:|---:|
+| 1 | 130 | 6 ms | 16 ms |
+| 10 | 432 | 15 ms | 69 ms |
+| 100 | 450 | 157 ms | 615 ms |
+
+Its first run managed 25 a second at any concurrency: every query went down one connection, and three queries let the planner scan every note. A connection pool and stepping out from the indexed id with `WITH` fixed both.
 
 ## What was reused and what is new
 
@@ -183,7 +226,7 @@ LockIn existed before the event. The import is its own commit (`99e7e3a`, from `
 
 | Before the event (LockIn) | Built during Graph Hacks |
 |---|---|
-| Notebook, MCP server, agent tokens, batons (`save_handoff` / `pickup_handoff`), witness workflow, `supersede_note`, the Claude Code plugin, Docker Compose | All of `lib/graph/` (FalkorDB client, per-account graphs, projection, context walks, receipts, diff, impact, finished-work tracing, who-knows, keystones, receipt views); `check_context`, `link_dependency`, `impact_of_change`, `trace_task`, `who_knows`, `keystone_decisions`; graph-backed `pickup_handoff`; the "done" guard in `update_plan_item`; impact preview in `supersede_note`; the fix for the unchecked claim in pickup; the Context manifests and Who knows what panels, the receipt graph, `/api/manifest`, `/api/brain`; the plugin's `check_context` hook; FalkorDB in Compose; GCP deploy; `eval/` |
+| Notebook, MCP server, agent tokens, batons (`save_handoff` / `pickup_handoff`), witness workflow, `supersede_note`, the Claude Code plugin, Docker Compose | All of `lib/graph/` (FalkorDB client, per-account graphs, projection, context walks, receipts, diff, impact, finished-work tracing, who-knows, keystones, receipt views); `check_context`, `link_dependency`, `impact_of_change`, `trace_task`, `who_knows`, `keystone_decisions`, `stale_answers`; ruled-out attempts as procedural memory; Ask answers and saved documents in the graph, and the *Out of date* stamp in Ask; graph-backed `pickup_handoff`; the "done" guard in `update_plan_item`; impact preview in `supersede_note`; the fix for the unchecked claim in pickup; the Context manifests and Who knows what panels, the receipt graph, `/api/manifest`, `/api/brain`; the plugin's `check_context` hook; FalkorDB in Compose; GCP deploy; `eval/` |
 
 The original LockIn README is at [`docs/lockin.md`](lockin.md). The research and plan behind this entry are in [`LOCKIN_FALKORDB_RESEARCH_AND_PLAN.md`](../LOCKIN_FALKORDB_RESEARCH_AND_PLAN.md).
 
@@ -192,5 +235,5 @@ The original LockIn README is at [`docs/lockin.md`](lockin.md). The research and
 - **The guard covers LockIn's own operations.** Ticking a task done through LockIn is refused while the receipt is out of date. Nothing stops an agent from editing code it was told is out of date; the manifest tells it, it doesn't enforce it.
 - **Dependencies are explicit.** A task depends on a decision because an agent or you said so (`link_dependency`), not because anything was inferred from text. Notes about the same file are not treated as dependent.
 - **Revisions are hashes of the current text,** not a version history. A receipt can tell you a page changed since, but not show the old text.
-- **The projection syncs before every graph operation.** It costs a Postgres query or two per call, and is built for one person's notebook, not a large organization.
+- **The projection syncs before every graph operation.** It costs a Postgres query or two per call. The graph itself holds up to 100 agents at once on a 5,000-note notebook; we haven't tested an organization's worth.
 - The numbers above come from a dev server on one machine.
