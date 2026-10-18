@@ -12,9 +12,8 @@
 // STOP_AFTER=7 stops once the user has witnessed the replacement, leaving
 // Codex's context out of date: the state to open the app at for a demo.
 
-const BASE = (process.env.BASE ?? "http://localhost:3000").replace(/\/$/, "");
-const EMAIL = process.env.EMAIL ?? `demo-${Date.now()}@example.com`;
-const PASSWORD = process.env.PASSWORD ?? "manifest-demo-1";
+import { BASE, EMAIL, PASSWORD, agent, signUp, token, web } from "./lib.mjs";
+
 const QUIET = process.env.QUIET === "1";
 const STOP_AFTER = Number(process.env.STOP_AFTER ?? Infinity);
 
@@ -33,56 +32,6 @@ function step(n, what) {
 function expect(ok, what) {
   console.log(`${ok ? "PASS" : "FAIL"} ${what}`);
   if (!ok) failures++;
-}
-
-// A cookie jar, enough for NextAuth's credentials sign-in.
-const jar = new Map();
-async function web(path, init = {}) {
-  const res = await fetch(BASE + path, {
-    ...init,
-    redirect: "manual",
-    headers: { ...(init.headers ?? {}), cookie: [...jar].map(([k, v]) => `${k}=${v}`).join("; ") },
-  });
-  for (const c of res.headers.getSetCookie()) {
-    const [pair] = c.split(";");
-    const i = pair.indexOf("=");
-    jar.set(pair.slice(0, i), pair.slice(i + 1));
-  }
-  return res;
-}
-const json = (body) => ({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-
-async function signUp() {
-  const reg = await web("/api/register", json({ email: EMAIL, password: PASSWORD, name: "Demo" }));
-  if (!reg.ok) throw new Error(`register: ${reg.status} ${await reg.text()}`);
-  const { csrfToken } = await (await web("/api/auth/csrf")).json();
-  const form = new URLSearchParams({ csrfToken, email: EMAIL, password: PASSWORD, json: "true" });
-  await web("/api/auth/callback/credentials", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form });
-  if (![...jar.keys()].some((k) => k.includes("session-token"))) throw new Error("sign-in didn't set a session");
-}
-
-async function token(name) {
-  const res = await web("/api/tokens", json({ name }));
-  if (!res.ok) throw new Error(`token: ${res.status} ${await res.text()}`);
-  return (await res.json()).secret;
-}
-
-/** An agent: calls the notebook's MCP tools with its own token. */
-function agent(secret) {
-  let id = 0;
-  return async (name, args = {}) => {
-    const res = await fetch(`${BASE}/api/mcp`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${secret}`, "content-type": "application/json", accept: "application/json, text/event-stream" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: ++id, method: "tools/call", params: { name, arguments: args } }),
-    });
-    const raw = await res.text();
-    // Streamable HTTP answers as JSON or as one SSE event.
-    const body = raw.startsWith("{") ? JSON.parse(raw) : JSON.parse(raw.split("\n").find((l) => l.startsWith("data:")).slice(5));
-    if (body.error) throw new Error(`${name}: ${body.error.message}`);
-    const text = body.result.content.map((c) => c.text).join("\n");
-    return { text, isError: Boolean(body.result.isError) };
-  };
 }
 
 const idIn = (text, what = "Note id") => text.match(new RegExp(`${what} ([0-9a-f-]{36})`))?.[1];
