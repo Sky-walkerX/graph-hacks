@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import type { PinnedPage } from "@/lib/handoff/card";
 import { GraphUnavailable, read } from "./client";
-import { contextFor, diff, findReceipt, impactOf, linkDependency, recordReceipt, type Change, type Item, type Receipt } from "./context";
+import { contextFor, diff, findReceipt, impactOf, linkDependency, recordReceipt, type Change, type Delivered, type Item, type Receipt } from "./context";
 import { projectTask, syncedGraph } from "./project";
 
 // The manifest: what a baton's next agent is handed, worked out in the graph
@@ -70,6 +70,45 @@ export async function changesForTask(userId: string, agent: string, taskId: stri
   if (!r) return null;
   const found = (await findReceipt(graph, agent, r.id))!;
   return diff(found.delivered, (await contextFor(graph, found.handoff)).items);
+}
+
+export type Manifest = {
+  receipt: { id: string; at: number; warnings: string[]; refreshes: number };
+  agent: string;
+  baton: { id: string; goal: string; status: string };
+  delivered: Delivered[];
+  changes: Change[];
+};
+
+/**
+ * Each agent's current receipt (the newest per baton and agent that nothing
+ * refreshed), with what changed since it was handed over: the app's view of
+ * who is working from what.
+ */
+export async function listManifests(userId: string, limit = 8): Promise<Manifest[]> {
+  const graph = await syncedGraph(userId);
+  const rows = await read<{ id: string; at: number; warnings: string[]; agent: string; handoff: string; goal: string; status: string; refreshes: number }>(
+    graph,
+    `MATCH (a:Agent)-[:RECEIVED]->(r:Receipt)-[:FOR]->(h:Handoff)
+     WHERE NOT ()-[:REFRESHES]->(r)
+     RETURN r.id AS id, r.at AS at, r.warnings AS warnings, a.name AS agent, h.id AS handoff, h.goal AS goal, h.status AS status,
+            size([(r)-[:REFRESHES*1..20]->(:Receipt) | 1]) AS refreshes
+     ORDER BY at DESC LIMIT $limit`,
+    { limit },
+  );
+  return Promise.all(
+    rows.map(async (r) => {
+      const found = (await findReceipt(graph, r.agent, r.id))!;
+      const now = await contextFor(graph, r.handoff);
+      return {
+        receipt: { id: r.id, at: r.at, warnings: r.warnings ?? [], refreshes: r.refreshes },
+        agent: r.agent,
+        baton: { id: r.handoff, goal: r.goal, status: r.status },
+        delivered: found.delivered,
+        changes: diff(found.delivered, now.items),
+      };
+    }),
+  );
 }
 
 /** What leans on a note: see impactOf. */

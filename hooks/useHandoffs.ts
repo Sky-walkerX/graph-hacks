@@ -3,6 +3,7 @@ import { api } from "@/lib/fetcher";
 import { queryKeys } from "@/lib/query-keys";
 import type { listHandoffs } from "@/lib/handoff/store";
 import type { Attention } from "@/lib/notes/attention";
+import type { Manifest } from "@/lib/graph/manifest";
 
 type Json<T> = T extends Date ? string : T extends (infer U)[] ? Json<U>[] : T extends object ? { [K in keyof T]: Json<T[K]> } : T;
 export type HandoffRow = Json<Awaited<ReturnType<typeof listHandoffs>>[number]>;
@@ -41,5 +42,20 @@ export function useCloseHandoff() {
     },
     onError: (_e, _id, ctx) => qc.setQueryData(queryKeys.handoffs, ctx?.prev),
     onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.handoffs }),
+  });
+}
+
+export type ManifestList = Json<{ available: boolean; manifests: Manifest[] }>;
+export type ManifestRow = ManifestList["manifests"][number];
+
+// What each agent was handed when it picked up a baton, worked out in the
+// graph, and what changed since. Refetched on mount, and every half minute
+// while the page is open, since agents and witnessing move it on.
+export function useManifests() {
+  return useQuery({
+    queryKey: queryKeys.manifests,
+    queryFn: () => api.get<ManifestList>("/api/manifest"),
+    refetchOnMount: "always",
+    refetchInterval: 30_000,
   });
 }

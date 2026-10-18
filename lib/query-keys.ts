@@ -13,6 +13,7 @@ export const queryKeys = {
   // Under "notes", so whatever refreshes the note lists refreshes this too.
   attention: ["notes", "attention"],
   handoffs: ["handoffs"],
+  manifests: ["manifests"],
   account: ["account"],
   tokens: ["tokens"],
   connectedApps: ["oauth-grants"],

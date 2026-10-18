@@ -610,6 +610,34 @@
   .lk-baton-history ul { display: grid; gap: 4px; margin-top: 6px; }
   @media (max-width: 640px) { .lk-baton-fields { grid-template-columns: 1fr; } .lk-baton-fields dt { padding-top: 6px; } }
 
+  /* Home → Context manifests: what each agent was handed, and whether it still holds. */
+  .lk-manifest { padding: 10px 0 12px; border-top: 1px solid var(--border); }
+  .lk-manifest:first-child { border-top: 0; padding-top: 4px; }
+  .lk-manifest-goal { margin-top: 2px; font-family: var(--lk-font-prose); font-size: 17px; line-height: 1.3; }
+  .lk-manifest-stamp {
+    font-family: var(--lk-font-display); font-weight: 700; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 1px 7px; border: 1.5px solid var(--lk-ok); border-radius: 2px; color: var(--lk-ok);
+  }
+  .lk-manifest-stamp-stale { border-color: var(--lk-stamp); color: var(--lk-stamp); }
+  .lk-manifest-changes { display: grid; gap: 6px; margin-top: 8px; font-size: 14.5px; line-height: 1.45; }
+  .lk-manifest-tag {
+    font-family: var(--lk-font-display); font-weight: 700; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--lk-warn); margin-right: 4px;
+  }
+  .lk-manifest-path { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin-top: 4px; font-size: 13px; color: var(--muted-foreground); }
+  .lk-manifest-path li { position: relative; padding: 1px 7px; border: 1px solid var(--border); border-radius: 2px; background: var(--background); }
+  .lk-manifest-path li + li::before { content: "→"; position: absolute; left: -15px; }
+  .lk-manifest-path li.lk-manifest-path-then { border-color: var(--lk-stamp); color: var(--foreground); }
+  .lk-manifest-path li.lk-manifest-path-then::before { content: "⇒"; }
+  .lk-manifest-evidence { margin-top: 8px; font-size: 13.5px; }
+  .lk-manifest-evidence summary { cursor: pointer; color: var(--muted-foreground); }
+  .lk-manifest-evidence summary:hover { color: var(--foreground); }
+  .lk-manifest-evidence table { width: 100%; margin-top: 6px; border-collapse: collapse; }
+  .lk-manifest-evidence th { text-align: left; font-weight: 600; color: var(--muted-foreground); padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); }
+  .lk-manifest-evidence td { padding: 4px 8px 4px 0; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+  .lk-manifest-warnings { margin-top: 6px; display: grid; gap: 3px; color: var(--lk-warn); }
+  @media (max-width: 640px) { .lk-manifest-evidence th:nth-child(3), .lk-manifest-evidence td:nth-child(3) { display: none; } }
+
   .lk-note-conflict {
     margin-bottom: 14px; padding: 10px 14px;
     border: 1px solid var(--lk-stamp); border-radius: 2px; background: var(--card);
