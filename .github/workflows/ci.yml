@@ -12,6 +12,16 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The graph tests (lib/graph/*.test.ts) run against a real FalkorDB.
+    services:
+      falkordb:
+        image: falkordb/falkordb:v4.22.1
+        env:
+          BROWSER: "0"
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 20
     steps:
       - uses: actions/checkout@v7
 
@@ -29,6 +39,8 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm test
+        env:
+          FALKORDB_URL: redis://localhost:6379
 
       # No database needed: nothing connects until a request runs.
       - run: pnpm build
