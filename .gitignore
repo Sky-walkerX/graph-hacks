@@ -70,3 +70,4 @@ service/.pytest_cache/
 # the motion graphics project (video/): its dependencies and scratch renders
 /video/node_modules
 /video/out
+/video/public/demo
