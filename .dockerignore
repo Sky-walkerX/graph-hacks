@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.env*
+!.env.example
+storage
+public/ort
+.impeccable
+.claude
+.agents
+service
+Caddyfile
+coverage
+*.log
+
+docs

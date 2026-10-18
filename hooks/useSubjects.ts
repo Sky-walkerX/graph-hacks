@@ -1,0 +1,100 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Subject, Milestone, Task, Subtask } from "@/app/generated/prisma/browser";
+import type { ResourceRow } from "./useResources";
+import { api } from "@/lib/fetcher";
+import { queryKeys } from "@/lib/query-keys";
+
+export type SubjectWithProgress = Subject & {
+  _count: { milestones: number; tasks: number; resources: number };
+  totalTasks: number;
+  completedTasks: number;
+  coverage: number; // 0–1, weighted by milestone (lib/pace/pace.ts)
+};
+
+// Subtasks nest one level: top-level subtasks carry their children inline.
+export type SubtaskWithChildren = Subtask & { children: Subtask[] };
+
+export type TaskWithSubtasks = Task & { subtasks: SubtaskWithChildren[] };
+
+export type NoteLink = {
+  id: string;
+  page: number | null;
+  title: string;
+  subjectId: string;
+  /** The commit the linked note is anchored at, to show which is the later code. */
+  anchorCommit?: string | null;
+  anchorCommitAt?: Date | string | null;
+};
+export type MilestoneWithTasks = Milestone & {
+  tasks: TaskWithSubtasks[];
+  // Loaded with the subject; absent on a note just made in the browser.
+  supersedes?: NoteLink | null;
+  supersededBy?: (NoteLink & { source: string | null; witnessedAt: Date | string | null })[];
+};
+
+export type SubjectDetail = Subject & {
+  milestones: MilestoneWithTasks[];
+  tasks: TaskWithSubtasks[]; // loose tasks (no milestone)
+  resources: ResourceRow[];
+};
+
+export function useSubjects() {
+  return useQuery({
+    queryKey: queryKeys.subjects,
+    queryFn: () => api.get<SubjectWithProgress[]>("/api/subjects"),
+  });
+}
+
+export function useSubject(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.subject(id),
+    enabled: !!id,
+    queryFn: () => api.get<SubjectDetail>(`/api/subjects/${id}`),
+  });
+}
+
+export function useCreateSubject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { title: string; description?: string; color?: string }) =>
+      api.post<Subject>("/api/subjects", input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["subjects"] }),
+  });
+}
+
+export function useUpdateSubject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<{
+        title: string;
+        description: string | null;
+        color: string | null;
+        isArchived: boolean;
+        targetDate: string | null; // ISO
+        startDate: string | null; // ISO
+      }>;
+    }) => api.put<Subject>(`/api/subjects/${id}`, data),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ["subjects"] });
+      qc.invalidateQueries({ queryKey: ["subject", vars.id] });
+      // Archiving hides a subject's topics from the revision list.
+      if (vars.data.isArchived !== undefined) qc.invalidateQueries({ queryKey: ["reviews"] });
+    },
+  });
+}
+
+export function useDeleteSubject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.del<{ success: boolean }>(`/api/subjects/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["subjects"] });
+      qc.invalidateQueries({ queryKey: ["reviews"] });
+    },
+  });
+}
