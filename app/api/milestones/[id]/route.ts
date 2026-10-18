@@ -1,0 +1,146 @@
+import { type NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/prisma";
+import { getUserId } from "@/lib/auth";
+import { setClause } from "@/lib/sql";
+import { firstReview } from "@/lib/review/schedule";
+import { appendBlockToNote, confirmNote, dismissStale, saveNoteBody } from "@/lib/notes/write";
+import { WEB_SOURCE } from "@/lib/notes/source";
+import { ZONE_COOKIE, localDay } from "@/lib/zone";
+import type { Milestone } from "@/app/generated/prisma/client";
+import { z } from "zod";
+import * as f from "@/lib/http/fields";
+
+const UpdateMilestoneSchema = z.object({
+  title: f.title.optional(),
+  notes: f.body.optional(),
+  order: z.number().int().optional(),
+  isCompleted: z.boolean().optional(),
+  confidence: z.enum(["WEAK", "OK", "STRONG"]).nullable().optional(),
+  // null stops revising the topic; a date (re)starts it.
+  reviewDueAt: z.iso.datetime().nullable().optional(),
+  reviewInterval: z.number().int().positive().nullable().optional(),
+  weight: z.number().positive().max(10_000).optional(),
+  // Signing off on an agent's note. Only ever set, never cleared.
+  witnessed: z.literal(true).optional(),
+  // With `notes`: the bodyRev of the text the edit started from. The body is
+  // saved only if the note still says that (lib/notes/revision.ts).
+  base: z.string().max(64).optional(),
+  // A labelled block added to the end of the body ("from chat", "highlight").
+  append: z.object({ text: z.string().trim().min(1).max(100_000), label: z.string().trim().min(1).max(40) }).optional(),
+  // The user's answer to an agent's stale flag: the note still holds
+  // ("checked"), or the flag was wrong ("dismissed"). Either clears it.
+  stale: z.enum(["checked", "dismissed"]).optional(),
+});
+
+// See the tasks route: an enum column needs its placeholder cast, or Postgres
+// rejects the text -> enum write with error 42804.
+const ENUM_CASTS = { confidence: "Confidence" };
+
+// Ownership for a milestone is enforced through its subject's userId — folded
+// into each statement's WHERE rather than checked in a separate round trip.
+
+// PUT /api/milestones/[id] - update title/notes/order/completion/revision
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await getUserId(request);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+
+  const parsed = UpdateMilestoneSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid data", issues: parsed.error.issues }, { status: 400 });
+  }
+
+  const { reviewDueAt, witnessed, base, append, stale, ...rest } = parsed.data;
+
+  // Checking a note isn't writing it: these leave updatedAt alone (lib/notes/write.ts).
+  if (stale) {
+    const done = stale === "checked" ? await confirmNote(userId, id, WEB_SOURCE) : await dismissStale(userId, id);
+    if (!done) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(await prisma.milestone.findUnique({ where: { id } }));
+  }
+
+  // Both of these build on what the note says now, so they go through the
+  // row lock in lib/notes/write.ts rather than the single statement below.
+  if (append) {
+    const day = localDay(request.cookies.get(ZONE_COOKIE)?.value);
+    const note = await appendBlockToNote(userId, id, append.text, append.label, day);
+    if (!note) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(withoutSubject(note));
+  }
+  if (base !== undefined && rest.notes !== undefined) {
+    const saved = await saveNoteBody(userId, id, rest.notes, base);
+    if (saved.kind === "missing") return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (saved.kind === "conflict") {
+      return NextResponse.json({ error: "This note changed while you were editing it", current: saved.current }, { status: 409 });
+    }
+    delete rest.notes;
+    const more = witnessed || reviewDueAt !== undefined || Object.values(rest).some((v) => v !== undefined);
+    if (!more) return NextResponse.json(withoutSubject(saved.note));
+  }
+
+  const data: Record<string, unknown> = { ...rest };
+  if (witnessed) data.witnessedAt = new Date();
+  if (reviewDueAt !== undefined) data.reviewDueAt = reviewDueAt ? new Date(reviewDueAt) : null;
+
+  // Un-completing a topic takes it out of revision; completing one schedules
+  // its first review — but only when nothing is scheduled yet, so re-sending
+  // `isCompleted: true` never resets a schedule in progress. That "only if
+  // unset" needs the current row, so it's a COALESCE in the statement rather
+  // than a read first.
+  const fills: [column: string, value: unknown][] = [];
+  if (rest.isCompleted === false) {
+    Object.assign(data, { completedAt: null, reviewDueAt: null, reviewInterval: null, reviewCount: 0 });
+  } else if (rest.isCompleted === true) {
+    fills.push(["completedAt", new Date()]);
+    if (reviewDueAt === undefined && rest.reviewInterval === undefined) {
+      const first = firstReview(new Date());
+      fills.push(["reviewDueAt", first.reviewDueAt], ["reviewInterval", first.reviewInterval]);
+    }
+  }
+
+  const set = setClause(data, ENUM_CASTS);
+  if (!set) return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  const k = set.values.length;
+  // Dates pinned to UTC for the same reason setClause does it.
+  const completion = fills
+    .map(([col, v], i) => {
+      const p = v instanceof Date ? `($${k + i + 1}::timestamptz AT TIME ZONE 'UTC')` : `$${k + i + 1}`;
+      return `, "${col}" = COALESCE(m."${col}", ${p})`;
+    })
+    .join("");
+  const extra = fills.map(([, v]) => v);
+
+  const n = set.values.length + extra.length;
+  const [milestone] = await prisma.$queryRawUnsafe<Milestone[]>(
+    `UPDATE "Milestone" m SET ${set.clause}${completion}, "updatedAt" = (NOW() AT TIME ZONE 'UTC')
+     FROM "Subject" sub
+     WHERE m."id" = $${n + 1}
+       AND sub."id" = m."subjectId"
+       AND sub."userId" = $${n + 2}
+     RETURNING m.*`,
+    ...set.values,
+    ...extra,
+    id,
+    userId,
+  );
+  if (!milestone) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(milestone);
+}
+
+// The locked writes read the note's subject along with it; the client's note has none.
+function withoutSubject<T extends { subject: unknown }>(note: T): Omit<T, "subject"> {
+  const { subject, ...row } = note;
+  void subject;
+  return row;
+}
+
+// DELETE /api/milestones/[id] - its tasks survive, untied from any note (milestoneId set to null)
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await getUserId(request);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await params;
+
+  const { count } = await prisma.milestone.deleteMany({ where: { id, subject: { userId } } });
+  if (count === 0) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json({ success: true });
+}

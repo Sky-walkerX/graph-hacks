@@ -1,0 +1,85 @@
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+import prisma from "@/lib/prisma";
+import { Prisma } from "@/app/generated/prisma/client";
+import { mailConfigured } from "@/lib/mail";
+import { sendVerification } from "@/lib/accounts/emails";
+import { createTutorial } from "@/lib/accounts/tutorial";
+import { PASSWORD_MAX, PASSWORD_MIN, appOrigin, canCreateAccount, normalizeEmail, userByEmail } from "@/lib/accounts/policy";
+import { clientAddress, countAgainst, wait } from "@/lib/limits/rate";
+
+const RegisterSchema = z.object({
+  name: z.string().trim().max(100).optional().nullable(),
+  email: z.email("Enter a valid email address").max(254),
+  password: z
+    .string()
+    .min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`)
+    .max(PASSWORD_MAX, `Password must be at most ${PASSWORD_MAX} characters`),
+});
+
+// POST /api/register - a new account with an email and password. Where the
+// instance can send email, the account can't sign in until the address is
+// confirmed from the link this sends (`verify: true` in the reply).
+export async function POST(request: Request) {
+  try {
+    // Ten new accounts an hour from one network is plenty for people and little for a script.
+    const limit = await countAgainst(`register:${clientAddress(request.headers)}`, 10, 60 * 60);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { message: `Too many sign-ups from here. Try again in ${wait(limit.retryAfter)}.` },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
+      );
+    }
+
+    const parsed = RegisterSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? "Invalid registration data";
+      return NextResponse.json({ message }, { status: 400 });
+    }
+    const { name, password } = parsed.data;
+    const email = normalizeEmail(parsed.data.email);
+
+    if (!(await canCreateAccount())) {
+      return NextResponse.json({ message: "Sign-up is closed on this notebook." }, { status: 403 });
+    }
+
+    if (await userByEmail(email)) {
+      return NextResponse.json({ message: "User with this email already exists" }, { status: 409 });
+    }
+
+    // The unique index on email is still the last word when two sign-ups race (P2002).
+    const user = await prisma.user.create({
+      data: { email, password: await bcrypt.hash(password, 10), name: name || null },
+    });
+    await createTutorial(user.id);
+
+    const verify = mailConfigured();
+    if (verify) {
+      try {
+        await sendVerification(user, appOrigin(request));
+      } catch (error) {
+        console.error("Sending the confirmation email failed", error);
+        return NextResponse.json(
+          { message: "Your account was created, but the confirmation email couldn't be sent. Sign in to send it again." },
+          { status: 502 },
+        );
+      }
+    }
+
+    return NextResponse.json(
+      {
+        message: verify ? "Check your email for a link to confirm your address." : "User registered successfully",
+        verify,
+        user: { id: user.id, email: user.email, name: user.name },
+      },
+      { status: 201 },
+    );
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json({ message: "User with this email already exists" }, { status: 409 });
+    }
+    console.error("Registration error:", error);
+    return NextResponse.json({ message: "Something went wrong during registration" }, { status: 500 });
+  }
+}

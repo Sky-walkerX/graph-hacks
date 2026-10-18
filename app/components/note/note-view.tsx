@@ -1,0 +1,280 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { ArrowLeft, ListChecks, Maximize2, MessageSquareQuote, PenLine, Pencil, Trash2 } from "lucide-react";
+import { useAgo } from "@/app/components/clock";
+import type { MilestoneWithTasks } from "@/hooks/useSubjects";
+import { useDeleteMilestone, useUpdateMilestone } from "@/hooks/useMilestones";
+import { useNoteDraft } from "@/hooks/useNoteDraft";
+import { NoteConflict } from "./note-conflict";
+import { NoteStatus } from "./note-status";
+import { useChatPanel } from "@/app/components/chat/chat-provider";
+import { Markdown } from "@/app/components/subject/markdown";
+import { NotesEditor } from "@/app/components/subject/notes-editor-lazy";
+import { ShareButton } from "@/app/components/share/share-button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
+import { isTempId } from "@/lib/subject-cache";
+import { awaitingWitness, isOwnNote, sourceLabel } from "@/lib/notes/source";
+import { MoveNoteMenu } from "./move-note-menu";
+import { NoteFullscreen } from "./note-fullscreen";
+import { pageLabel } from "@/lib/notes/page-label";
+import { PASSAGE_HIGHLIGHT_CSS, usePassageHighlight } from "@/hooks/usePassageHighlight";
+import { AnimatePresence } from "motion/react";
+import * as m from "motion/react-m";
+import { fade } from "@/lib/motion";
+
+/** The page a replacement retires, as its Witness button names it. */
+const retires = (old: { page: number | null; title: string }) => (old.page != null ? pageLabel(old.page) : `"${old.title}"`);
+
+// One note as a page: a running head, the title, then the body on clean paper.
+// Reading is the default; the editor opens in place.
+export function NoteView({
+  note,
+  sectionTitle,
+  planHref,
+  backHref,
+  startEditing = false,
+  onDeleted,
+  onMoved,
+}: {
+  note: MilestoneWithTasks;
+  sectionTitle: string;
+  /** Null where the note has no Plan to show (the Inbox). */
+  planHref: string | null;
+  /** Phones show the list or the page, never both: this leads back to the list. */
+  backHref: string;
+  startEditing?: boolean;
+  onDeleted: () => void;
+  onMoved: (subjectId: string) => void;
+}) {
+  const ago = useAgo();
+  const update = useUpdateMilestone();
+  const del = useDeleteMilestone();
+  const draft = useNoteDraft(note);
+  const { open: openChat } = useChatPanel();
+  const [renaming, setRenaming] = useState(false);
+  const [titleVal, setTitleVal] = useState(note.title);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  // Holds the subject colour while open: read off the page when full screen
+  // opens, since the full-screen sheet renders outside it.
+  const [fullscreen, setFullscreen] = useState<{ color: string | null } | null>(null);
+  const pageRef = useRef<HTMLElement>(null);
+  // A citation opens the note at its passage (?q=…). On a subject page `q`
+  // can also belong to the resource reader (?read=…), which handles its own.
+  const searchParams = useSearchParams();
+  const quote = searchParams.get("read") ? null : searchParams.get("q");
+  const readingRef = useRef<HTMLDivElement>(null);
+  usePassageHighlight(readingRef, draft.editing ? null : quote, note.notes);
+  const pending = isTempId(note.id);
+  const awaiting = awaitingWitness(note);
+
+  // A note that was just created opens straight into the editor, once.
+  const opened = useRef<string | null>(null);
+  useEffect(() => {
+    if (startEditing && opened.current !== note.id) {
+      opened.current = note.id;
+      draft.open();
+    }
+  }, [startEditing, note.id, draft]);
+
+  const saveTitle = () => {
+    const t = titleVal.trim();
+    if (t && t !== note.title) update.mutate({ id: note.id, data: { title: t } });
+    setRenaming(false);
+  };
+
+  const remove = () => {
+    setConfirmOpen(false);
+    del.mutate(note.id);
+    onDeleted();
+  };
+
+
+  return (
+    <article ref={pageRef} className="lk-note-page" aria-labelledby="note-title">
+      <AnimatePresence>
+        {fullscreen && (
+          <NoteFullscreen note={note} sectionTitle={sectionTitle} color={fullscreen.color} onClose={() => setFullscreen(null)} />
+        )}
+      </AnimatePresence>
+      <div className="lk-runhead">
+        <Link href={backHref} scroll={false} className="lk-note-back">
+          <ArrowLeft size={13} /> All notes
+        </Link>
+        <span className="lk-note-where">
+          <b>{sectionTitle}</b> · Note{note.page != null && <> · {pageLabel(note.page)}</>}
+        </span>
+        <span>Updated {ago(note.updatedAt)}</span>
+      </div>
+
+      {renaming ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            saveTitle();
+          }}
+        >
+          <label htmlFor="note-title-input" className="sr-only">
+            Note title
+          </label>
+          <input
+            id="note-title-input"
+            autoFocus
+            value={titleVal}
+            onChange={(e) => setTitleVal(e.target.value)}
+            onBlur={saveTitle}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setTitleVal(note.title);
+                setRenaming(false);
+              }
+            }}
+            className="lk-note-title w-full bg-transparent outline-none"
+          />
+        </form>
+      ) : (
+        <h2 id="note-title" className="lk-note-title">
+          <button
+            type="button"
+            onClick={() => {
+              setTitleVal(note.title);
+              setRenaming(true);
+            }}
+            disabled={pending}
+            className="text-left"
+            title="Rename"
+          >
+            {note.title}
+          </button>
+        </h2>
+      )}
+
+      {!isOwnNote(note.source) && (
+        <div className="lk-provenance">
+          <span>
+            Recorded by <b>{sourceLabel(note.source)}</b>
+          </span>
+          {awaiting ? (
+            <>
+              <span className="lk-stamp">Awaiting witness</span>
+              <button
+                type="button"
+                onClick={() => update.mutate({ id: note.id, data: { witnessed: true } })}
+                className="lk-note-bar-btn"
+                title={
+                  note.supersedes
+                    ? `Sign off on this page; ${retires(note.supersedes)} becomes history and leaves search`
+                    : "Sign off: you've read this and it belongs in your notebook"
+                }
+              >
+                <PenLine size={14} /> {note.supersedes ? `Witness and retire ${retires(note.supersedes)}` : "Witness"}
+              </button>
+            </>
+          ) : (
+            <span>
+              · witnessed by you{note.witnessedAt ? ` ${ago(note.witnessedAt)}` : ""}
+            </span>
+          )}
+        </div>
+      )}
+
+      <NoteStatus note={note} />
+
+      <div className="lk-note-bar">
+        {planHref && (
+          <Link href={planHref} className="lk-note-bar-link">
+            <ListChecks size={14} />
+            {note.tasks.length > 0
+              ? `${note.tasks.filter((t) => t.isCompleted).length}/${note.tasks.length} tasks in Plan`
+              : "Plan tasks for this note"}
+          </Link>
+        )}
+        <span className="flex-1" />
+        {!draft.editing && (
+          <button type="button" onClick={draft.open} disabled={pending} className="lk-note-bar-btn">
+            <Pencil size={14} /> Edit
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => openChat({ prompt: `In my note "${note.title}": ` })}
+          className="lk-note-bar-btn lk-note-bar-primary"
+        >
+          <MessageSquareQuote size={14} /> Ask this note
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const c = pageRef.current ? getComputedStyle(pageRef.current).getPropertyValue("--c").trim() : "";
+            setFullscreen({ color: c || null });
+          }}
+          disabled={pending || draft.editing}
+          className="lk-iconbtn"
+          title="Full screen"
+          aria-label="Full screen"
+        >
+          <Maximize2 size={14} />
+        </button>
+        <MoveNoteMenu noteId={note.id} currentSubjectId={note.subjectId} onMoved={onMoved} disabled={pending} />
+        {!pending && <ShareButton target={{ type: "MILESTONE", entityId: note.id }} />}
+        <Popover open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <PopoverTrigger asChild>
+            <button type="button" disabled={pending} className="lk-iconbtn hover:text-destructive" title="Delete note">
+              <Trash2 size={14} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64">
+            <div className="flex flex-col gap-3">
+              <div className="lk-sec">Delete this note?</div>
+              <p className="text-sm text-muted-foreground">
+                {note.tasks.length > 0
+                  ? `Its ${note.tasks.length} task${note.tasks.length === 1 ? "" : "s"} stay in Plan, no longer tied to a note.`
+                  : "This can't be undone."}
+              </p>
+              <button
+                type="button"
+                onClick={remove}
+                className="lk-btn px-3 py-2 text-2xs"
+                style={{ background: "var(--destructive)", borderColor: "var(--destructive)", color: "#fff" }}
+              >
+                Delete note
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <div className="lk-note-body">
+        {draft.editing && draft.conflict && <NoteConflict note={note} />}
+        <AnimatePresence mode="wait" initial={false}>
+        {draft.editing ? (
+          <m.div key="editing" variants={fade} initial="hidden" animate="shown" exit="exit">
+          <NotesEditor
+            value={draft.failed ?? note.notes}
+            breadcrumb={note.title}
+            page={note.page}
+            placeholder="Write in markdown: headings, lists, code, tables, links…"
+            onSave={draft.save}
+            onCancel={draft.cancel}
+          />
+          </m.div>
+        ) : note.notes.trim() ? (
+          <m.div key="reading" ref={readingRef} className="lk-reading" variants={fade} initial="hidden" animate="shown" exit="exit">
+            {quote && <style>{PASSAGE_HIGHLIGHT_CSS}</style>}
+            <Markdown page={note.page}>{note.notes}</Markdown>
+          </m.div>
+        ) : (
+          <m.div key="empty" className="lk-note-empty" variants={fade} initial="hidden" animate="shown" exit="exit">
+            <p>Nothing written yet.</p>
+            <button type="button" onClick={draft.open} disabled={pending} className="lk-btn px-3 py-2 text-2xs">
+              Write this note
+            </button>
+          </m.div>
+        )}
+        </AnimatePresence>
+      </div>
+    </article>
+  );
+}
