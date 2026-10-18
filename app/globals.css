@@ -639,6 +639,30 @@
   .lk-manifest-evidence table { width: 100%; margin-top: 6px; border-collapse: collapse; }
   .lk-manifest-evidence th { text-align: left; font-weight: 600; color: var(--muted-foreground); padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); }
   .lk-manifest-evidence td { padding: 4px 8px 4px 0; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+  /* A receipt's graph (receipt-graph.tsx). */
+  .lk-graph { margin-top: 8px; }
+  .lk-graph-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 2px; background: var(--background); }
+  .lk-graph-scroll svg { margin: 0 auto; }
+  .lk-graph svg { display: block; }
+  .lk-graph-node rect { fill: var(--card, var(--background)); stroke: var(--border); stroke-width: 1.2; }
+  .lk-graph-title { font-size: 12.5px; font-weight: 600; fill: var(--foreground); }
+  .lk-graph-sub { font-size: 11px; fill: var(--muted-foreground); }
+  .lk-graph-agent rect, .lk-graph-receipt rect { stroke: var(--lk-live); }
+  .lk-graph-delivered rect { stroke: var(--lk-live); stroke-width: 2; }
+  .lk-graph-current rect { stroke: var(--lk-ok); stroke-width: 2; }
+  .lk-graph-retired { opacity: 0.5; }
+  .lk-graph-edge, .lk-graph-edge-delivered, .lk-graph-edge-replaced, .lk-graph-edge-proposed { fill: none; stroke-width: 1.4; transition: stroke-width var(--lk-dur-1) var(--lk-ease-settle); }
+  .lk-graph-edge { stroke: var(--muted-foreground); opacity: 0.7; }
+  .lk-graph-edge-delivered { stroke: var(--lk-live); stroke-dasharray: 5 4; }
+  .lk-graph-edge-replaced { stroke: var(--lk-stamp); stroke-width: 2; }
+  .lk-graph-edge-proposed { stroke: var(--lk-warn); stroke-dasharray: 3 3; }
+  .lk-graph-lit { stroke-width: 3.2; opacity: 1; }
+  .lk-graph-arrow { fill: var(--muted-foreground); }
+  .lk-graph-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 12.5px; color: var(--muted-foreground); }
+  .lk-graph-key { display: inline-block; width: 22px; height: 0; margin-right: 4px; vertical-align: middle; border-top: 2px solid; }
+  .lk-graph-key-delivered { border-color: var(--lk-live); border-top-style: dashed; }
+  .lk-graph-key-replaced { border-color: var(--lk-stamp); }
+  .lk-graph-key-proposed { border-color: var(--lk-warn); border-top-style: dotted; }
   .lk-brain-input {
     flex: 1; min-width: 0; padding: 4px 8px; font-size: 14.5px; border: 1px solid var(--border); border-radius: 2px;
     background: var(--background); color: var(--foreground);
