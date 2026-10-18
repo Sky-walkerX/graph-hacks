@@ -139,16 +139,31 @@ export type StaleAnswer = {
  * replaced; with `chat`, only that conversation's.
  */
 export async function staleAnswers(graph: Graph, opts: { noteId?: string; chat?: string; limit?: number } = {}): Promise<StaleAnswer[]> {
-  const rows = await read<{ id: string; at: number; chat: string; chatTitle: string; question: string | null; excerpt: string; cid: string; page: number | null; title: string; deleted: boolean }>(
-    graph,
-    `${opts.noteId ? `MATCH (:Note {id: $note})-[:SUPERSEDES*0..${CHAIN}]->(n:Note) WITH DISTINCT n MATCH (a:Answer)-[:CITES]->(n)` : "MATCH (a:Answer)-[:CITES]->(n:Note)"}
-     WITH a, n, size([(n)<-[:SUPERSEDES {accepted: true}]-(:Note) | 1]) AS replaced
-     WHERE (n.deleted = true OR replaced > 0)${opts.chat ? " AND a.chat = $chat" : ""}
-     RETURN a.id AS id, a.at AS at, a.chat AS chat, a.chatTitle AS chatTitle, a.question AS question, a.excerpt AS excerpt,
+  type Row = { id: string; at: number; chat: string; chatTitle: string; question: string | null; excerpt: string; cid: string; page: number | null; title: string; deleted: boolean };
+  const RETURN = `RETURN DISTINCT a.id AS id, a.at AS at, a.chat AS chat, a.chatTitle AS chatTitle, a.question AS question, a.excerpt AS excerpt,
             n.id AS cid, n.page AS page, n.title AS title, n.deleted AS deleted
-     ORDER BY at DESC LIMIT 200`,
-    { note: opts.noteId, chat: opts.chat },
-  );
+     ORDER BY at DESC LIMIT 200`;
+  // A few answers to check (one note's, one chat's): test each cited page.
+  // Every answer: start from the replaced and the deleted pages instead,
+  // which an index and the replacements reach without visiting every answer.
+  const STALE = `WITH a, n, size([(n)<-[:SUPERSEDES {accepted: true}]-(:Note) | 1]) AS replaced
+     WHERE n.deleted = true OR replaced > 0`;
+  const rows = opts.noteId
+    ? await read<Row>(
+        graph,
+        `MATCH (:Note {id: $note})-[:SUPERSEDES*0..${CHAIN}]->(n:Note) WITH DISTINCT n MATCH (a:Answer)-[:CITES]->(n) ${STALE} ${RETURN}`,
+        { note: opts.noteId },
+      )
+    : opts.chat
+      ? await read<Row>(graph, `MATCH (a:Answer {chat: $chat})-[:CITES]->(n:Note) ${STALE} ${RETURN}`, { chat: opts.chat })
+      : (
+          await Promise.all([
+            read<Row>(graph, `MATCH (a:Answer)-[:CITES]->(n:Note)<-[:SUPERSEDES {accepted: true}]-(:Note) ${RETURN}`),
+            read<Row>(graph, `MATCH (n:Note {deleted: true}) WITH n MATCH (a:Answer)-[:CITES]->(n) ${RETURN}`),
+          ])
+        )
+          .flat()
+          .sort((x, y) => y.at - x.at);
   const heads = await resolve(graph, [...new Set(rows.map((r) => r.cid))]);
   const byAnswer = new Map<string, StaleAnswer>();
   for (const r of rows) {

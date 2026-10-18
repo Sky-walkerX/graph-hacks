@@ -92,8 +92,11 @@ async function proposalsFor(graph: Graph, ids: string[]) {
   const rows = await read<{ id: string; proposals: Item["proposals"] }>(
     graph,
     `UNWIND $ids AS id
-     MATCH (n:Note {id: id})<-[:SUPERSEDES {accepted: false}]-(p:Note)
-     WHERE p.deleted = false
+     MATCH (n:Note {id: id})
+     // From the indexed note out: written as one pattern, the planner scans every note.
+     WITH id, n
+     MATCH (n)<-[s:SUPERSEDES]-(p:Note)
+     WHERE s.accepted = false AND p.deleted = false
      RETURN id, collect({id: p.id, page: p.page, title: p.title, source: p.source}) AS proposals`,
     { ids },
   );
