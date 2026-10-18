@@ -146,7 +146,7 @@ Settings in `.env`:
 | `PUBLIC_URL` | The address people open LockIn at. Default `http://localhost:3000`. |
 | `LOCKIN_PORT` | Host port. Default `3000`. |
 | `LOCKIN_BIND` | Which of the machine's addresses that port listens on. Default `127.0.0.1`: the machine itself, which is you or a proxy running on it. |
-| `LOCKIN_VERSION` | The release to run, such as `1.0.0`. Default: the release your checkout is. |
+| `FALKORDB_PORT`, `FALKORDB_BROWSER_PORT` | Host ports for FalkorDB (default `6379`) and FalkorDB Browser (default `3001`), both on `127.0.0.1` only. `FALKORDB_BROWSER=0` turns the Browser off. |
 | `POSTGRES_PASSWORD` | Password for the bundled Postgres. |
 | `SIGNUP` | `open` (the default) lets anyone who can reach the address make an account. `closed` stops new accounts once the first one exists. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional. "Continue with Google" appears only when both are set. |
