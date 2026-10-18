@@ -1,12 +1,10 @@
-# LockIn, self-hosted.
+# LockIn Relay (Graph Hacks), self-hosted.
 #
 #   cp .env.example .env    # then set AUTH_SECRET (and INGEST_SECRET for the ingest profile)
-#   docker compose up -d    # Postgres + LockIn on http://localhost:3000
+#   docker compose up -d    # Postgres + FalkorDB + LockIn on http://localhost:3000
 #
-# Each service names a published image and how to build it. `up` pulls the
-# image for the release this checkout is (the version below, bumped with each
-# release; LOCKIN_VERSION overrides it) and builds from the checkout when
-# there isn't one; `up --build` always builds.
+# The images are built from this checkout (nothing is pulled for them);
+# `up --build` rebuilds after a change.
 #
 # Add PDF/link text extraction and server-side embeddings:
 #   docker compose --profile ingest up -d
@@ -14,7 +12,8 @@
 # Add HTTPS on a machine the internet can reach (see README):
 #   docker compose --profile https up -d
 #
-# Data lives in two volumes: `db` (Postgres) and `uploads` (note images, PDFs).
+# Data lives in three volumes: `db` (Postgres), `graph` (FalkorDB) and
+# `uploads` (note images, PDFs).
 
 services:
   db:
@@ -32,9 +31,31 @@ services:
       timeout: 5s
       retries: 20
 
+  # The graph: memory revisions, dependencies, handoffs and context receipts.
+  # Port 6379 is published to the machine itself only, for `pnpm dev`; the app
+  # container reaches it as falkordb:6379. FalkorDB Browser (a graph viewer)
+  # listens on FALKORDB_BROWSER_PORT, also on the machine itself only.
+  falkordb:
+    image: falkordb/falkordb:v4.22.1
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FALKORDB_PORT:-6379}:6379"
+      - "127.0.0.1:${FALKORDB_BROWSER_PORT:-3001}:3000"
+    environment:
+      BROWSER: ${FALKORDB_BROWSER:-1}
+      # Append-only file as well as snapshots, so a restart keeps every write.
+      REDIS_ARGS: --appendonly yes
+    volumes:
+      - graph:/var/lib/falkordb/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   # Runs `prisma migrate deploy` once, then exits; the app waits for it.
   migrate:
-    image: ghcr.io/sky-walkerx/lockin-migrate:${LOCKIN_VERSION:-0.1.0}
+    image: graph-hacks-migrate:local
     build: { context: ., target: migrate }
     environment: &db-env
       DATABASE_URL: postgresql://lockin:${POSTGRES_PASSWORD:-lockin}@db:5432/lockin
@@ -43,7 +64,7 @@ services:
       db: { condition: service_healthy }
 
   app:
-    image: ghcr.io/sky-walkerx/lockin:${LOCKIN_VERSION:-0.1.0}
+    image: graph-hacks:local
     build: { context: ., target: app, args: { PUBLIC_URL: "${PUBLIC_URL:-}" } }
     restart: unless-stopped
     # Published to the machine itself only, so a proxy in front (the https
@@ -86,10 +107,12 @@ services:
       INGEST_URL: ${INGEST_URL:-}
       INGEST_SECRET: ${INGEST_SECRET:-}
       APP_INTERNAL_URL: http://app:3000
+      FALKORDB_URL: redis://falkordb:6379
     volumes:
       - uploads:/data/uploads
     depends_on:
       migrate: { condition: service_completed_successfully }
+      falkordb: { condition: service_healthy }
     # The image has no curl; node is already there.
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
@@ -104,7 +127,7 @@ services:
   # INGEST_URL=http://ingest:8080 and INGEST_SECRET in .env.
   ingest:
     profiles: [ingest]
-    image: ghcr.io/sky-walkerx/lockin-ingest:${LOCKIN_VERSION:-0.1.0}
+    image: graph-hacks-ingest:local
     build: ./service
     restart: unless-stopped
     environment:
@@ -145,5 +168,6 @@ services:
 
 volumes:
   db:
+  graph:
   uploads:
   caddy:
