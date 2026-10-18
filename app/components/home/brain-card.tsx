@@ -8,8 +8,10 @@ import { pageLabel } from "@/lib/notes/page-label";
 
 // The notebook as a team's memory. Ask who knows something (a topic, or a
 // file path) and get the pages that stand now and the agents that hold them,
-// marking the ones holding a version that's been replaced since. With nothing
-// asked, the decisions the most work rests on. Laid out like "Needs a look".
+// marking the ones holding a version that's been replaced since, and the
+// saved documents on it. With nothing asked, the decisions the most work
+// rests on, and the Ask answers that cite pages replaced since. Laid out like
+// "Needs a look".
 // Renders nothing until the graph has something to say.
 
 const page = (p: { page: number | null; title: string }) => (p.page != null ? `${pageLabel(p.page)} · ${p.title}` : p.title);
@@ -19,7 +21,7 @@ export function BrainCard() {
   const [q, setQ] = useState("");
   const { data, isFetching } = useBrain(q);
   if (!data?.available) return null;
-  if (!q && data.keystones.length === 0) return null;
+  if (!q && data.keystones.length === 0 && data.reask.length === 0) return null;
   return (
     <section aria-label="Who knows what" className="lk-hero px-4 py-3">
       <div className="mb-2 flex flex-wrap items-baseline gap-x-3">
@@ -40,7 +42,7 @@ export function BrainCard() {
       </form>
 
       {q ? (
-        data.known.length === 0 ? (
+        data.known.length === 0 && data.docs.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">Nothing in the notebook is about “{q}”.</p>
         ) : (
           <ul className="mt-1 grid">
@@ -52,6 +54,7 @@ export function BrainCard() {
                   {[
                     k.replaced.length > 0 ? `Replaces ${k.replaced.map(pageLabel).join(", ")}` : null,
                     k.files.length > 0 ? `About ${k.files.join(", ")}` : null,
+                    k.answers.current > 0 ? `Cited by ${k.answers.current} Ask answer${k.answers.current === 1 ? "" : "s"}` : null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -71,14 +74,53 @@ export function BrainCard() {
                       {el}
                     </span>
                   ))}
+                  {k.answers.stale > 0 && (
+                    <span className="text-[var(--lk-stamp)]">
+                      {" · "}
+                      {k.answers.stale} Ask answer{k.answers.stale === 1 ? " cites" : "s cite"} a page it replaced
+                    </span>
+                  )}
                 </span>
+              </li>
+            ))}
+            {data.docs.map((d) => (
+              <li key={d.id} className="border-t border-border py-1.5 first:border-t-0">
+                <span className="lk-tag mr-2">Saved</span>
+                <a href={d.url} target="_blank" rel="noreferrer" className="font-reading text-base underline-offset-2 hover:underline">
+                  {page(d)}
+                </a>
+                {d.citedBy > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    {" "}
+                    · cited by {d.citedBy} Ask answer{d.citedBy === 1 ? "" : "s"}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
         )
       ) : (
         <>
-          <h3 className="lk-sec mt-3">Decisions the most work rests on</h3>
+          {data.reask.length > 0 && (
+            <>
+              <h3 className="lk-sec mt-3">Answers to ask again</h3>
+              <ul className="mt-1 grid">
+                {data.reask.slice(0, 5).map((a) => (
+                  <li key={a.id} className="border-t border-border py-1.5 first:border-t-0">
+                    <span className="font-reading text-base">“{a.question ?? a.chatTitle}”</span>
+                    <span className="lk-stamp ml-2">Out of date</span>
+                    <span className="block text-sm text-muted-foreground">
+                      {a.cited
+                        .map((c) => `${c.page != null ? pageLabel(c.page) : c.title} ${c.now ? `replaced by ${c.now.page != null ? pageLabel(c.now.page) : c.now.title}` : "deleted"}`)
+                        .join(" · ")}
+                      {a.question && a.chatTitle.startsWith(a.question.slice(0, 40)) ? "" : ` · in “${a.chatTitle}”`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {data.keystones.length > 0 && <h3 className="lk-sec mt-3">Decisions the most work rests on</h3>}
           <ol className="mt-1 grid">
             {data.keystones.map((k) => (
               <li key={k.note.id} className="border-t border-border py-1.5 first:border-t-0">

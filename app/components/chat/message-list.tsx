@@ -10,6 +10,8 @@ import { citedPages, linkCitations } from "@/lib/chat/citations";
 import { refHref, type MessageRef } from "@/lib/chat/refs";
 import { pageLabel } from "@/lib/notes/page-label";
 import type { StreamPhase } from "@/hooks/useChat";
+import { useStaleAnswers } from "@/hooks/useHandoffs";
+import type { StaleAnswer } from "@/lib/graph/ask";
 import { SaveToNote } from "./save-to-note";
 
 /** Short local timestamp: "2:34 PM" */
@@ -49,6 +51,7 @@ export function MessageList({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
+  const { data: stale } = useStaleAnswers(messages[0]?.conversationId);
 
   const onScroll = () => {
     const el = scrollRef.current;
@@ -89,6 +92,7 @@ export function MessageList({
             sources={message.sources}
             refs={readRefs(message.refs)}
             subjectId={subjectId}
+            stale={stale?.get(message.id)}
           />
         ),
       )}
@@ -114,18 +118,22 @@ function AssistantBubble({
   sources,
   refs,
   subjectId,
+  stale,
 }: {
   content: string;
   model: string | null;
   sources: string[];
   refs: MessageRef[] | null;
   subjectId: string | null;
+  /** Set when a page it cites has been replaced or deleted since. */
+  stale?: StaleAnswer;
 }) {
   const { answer, reasoning } = splitReasoning(content);
 
   return (
     <div className="lk-chat-bubble assistant">
       {reasoning && <Reasoning text={reasoning} />}
+      {stale && <OutOfDate stale={stale} />}
       <Answer text={answer} refs={refs} />
       {/* Replies from before pages existed only have breadcrumbs. */}
       {refs ? <FromNotebook refs={refs} answer={answer} /> : sources.length > 0 && <Sources breadcrumbs={sources} />}
@@ -136,6 +144,19 @@ function AssistantBubble({
         {subjectId && <SaveToNote subjectId={subjectId} answer={answer} />}
       </div>
     </div>
+  );
+}
+
+/** Says which cited pages the notebook has moved past since this answer. */
+function OutOfDate({ stale }: { stale: StaleAnswer }) {
+  return (
+    <p className="mb-2 text-sm">
+      <span className="lk-stamp mr-2">Out of date</span>
+      {stale.cited
+        .map((c) => `${c.page != null ? pageLabel(c.page) : `“${c.title}”`} ${c.now ? `was replaced by ${c.now.page != null ? pageLabel(c.now.page) : `“${c.now.title}”`}` : "was deleted"}`)
+        .join("; ")}
+      . Ask again to answer from what stands now.
+    </p>
   );
 }
 
