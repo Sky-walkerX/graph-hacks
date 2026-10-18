@@ -45,6 +45,10 @@ export type Item = {
 
 type Reached = { id: string; via: Step[]; hops: number };
 
+/** A path as a receipt keeps it: "baton → task "Add retry" → p. 9". */
+export const whyOf = (via: Step[]) =>
+  via.map((s) => (s.kind === "Note" ? (s.page != null ? `p. ${s.page}` : `"${s.label}"`) : `${s.kind === "Handoff" ? "baton" : s.kind.toLowerCase()} "${s.label}"`)).join(" → ");
+
 const STEP = `[x IN nodes(p) | {kind: labels(x)[0], id: x.id, label: coalesce(x.title, x.goal, x.id), page: x.page}]`;
 
 /** The notes a baton reaches, each by its shortest path. */
@@ -175,7 +179,7 @@ export async function recordReceipt(
       id: receipt.id,
       items: context.items.map((i) => ({
         id: i.id, hash: i.hash, witnessed: i.witnessed, page: i.page, title: i.title,
-        why: i.via.map((s) => (s.page ? `p${s.page}` : `${s.kind}:${s.label}`)).join(" → "),
+        why: whyOf(i.via),
         replaced: i.replaces?.id ?? null,
       })),
     },
@@ -186,7 +190,17 @@ export async function recordReceipt(
   return receipt;
 }
 
-export type Delivered = { id: string; page: number | null; title: string; hash: string; witnessed: boolean; nowHash: string | null; deleted: boolean };
+export type Delivered = {
+  id: string;
+  page: number | null;
+  title: string;
+  hash: string;
+  witnessed: boolean;
+  /** The path that made it relevant, as recorded: "this baton → task → p. 9". */
+  why: string;
+  nowHash: string | null;
+  deleted: boolean;
+};
 
 /** A receipt and what it delivered. With no id, the agent's newest one that nothing refreshed. */
 export async function findReceipt(graph: Graph, agent: string, id?: string) {
@@ -204,7 +218,8 @@ export async function findReceipt(graph: Graph, agent: string, id?: string) {
   const delivered = await read<Delivered>(
     graph,
     `MATCH (:Receipt {id: $id})-[d:DELIVERED]->(n:Note)
-     RETURN n.id AS id, d.page AS page, d.title AS title, d.hash AS hash, d.witnessed AS witnessed, n.hash AS nowHash, n.deleted AS deleted`,
+     RETURN n.id AS id, d.page AS page, d.title AS title, d.hash AS hash, d.witnessed AS witnessed, d.why AS why,
+            n.hash AS nowHash, n.deleted AS deleted`,
     { id: r.id },
   );
   return { ...r, delivered };

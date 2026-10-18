@@ -9,14 +9,27 @@
 // Prints each step and the server's reply, then checks the replies say what
 // they should. Exits 1 when a check fails. Leaves the account in place so the
 // story can be opened in the app (the email and password are printed).
+// STOP_AFTER=7 stops once the user has witnessed the replacement, leaving
+// Codex's context out of date: the state to open the app at for a demo.
 
 const BASE = (process.env.BASE ?? "http://localhost:3000").replace(/\/$/, "");
 const EMAIL = process.env.EMAIL ?? `demo-${Date.now()}@example.com`;
 const PASSWORD = process.env.PASSWORD ?? "manifest-demo-1";
 const QUIET = process.env.QUIET === "1";
+const STOP_AFTER = Number(process.env.STOP_AFTER ?? Infinity);
 
 let failures = 0;
 const log = (...a) => !QUIET && console.log(...a);
+function done() {
+  console.log(`\nAccount: ${EMAIL} / ${PASSWORD}`);
+  console.log(failures === 0 ? "All checks passed." : `${failures} check(s) failed.`);
+  process.exit(failures === 0 ? 0 : 1);
+}
+/** Prints step n, or ends the run when it's past STOP_AFTER. */
+function step(n, what) {
+  if (n > STOP_AFTER) done();
+  log(`\n${n}. ${what}`);
+}
 function expect(ok, what) {
   console.log(`${ok ? "PASS" : "FAIL"} ${what}`);
   if (!ok) failures++;
@@ -85,7 +98,7 @@ async function main() {
   const claude = agent(await token("claude-code"));
   const codex = agent(await token("codex"));
 
-  log("\n1. Claude Code records the retry decision and what it learned about the payments API; the user witnesses both.");
+  step(1, "Claude Code records the retry decision and what it learned about the payments API; the user witnesses both.");
   const retry = await claude("save_note", {
     title: "Checkout: retry the payment call on 5xx",
     body: "Decision: `POST /payments/charge` is retried up to 3 times with backoff on any 5xx. Implemented in `lib/checkout/pay.ts`.",
@@ -103,7 +116,7 @@ async function main() {
   await witness(retryId);
   await witness(apiId);
 
-  log("\n2. It plans the retry work, says the task rests on the retry decision, and hands off (usage cap).");
+  step(2, "It plans the retry work, says the task rests on the retry decision, and hands off (usage cap).");
   const task = await claude("add_task", { title: "Add retry with backoff to checkout payment", note_id: retryId });
   const taskId = task.text.match(/task ([0-9a-f-]{36})/i)?.[1] ?? task.text.match(/([0-9a-f-]{36})/)?.[1];
   const dep = await claude("link_dependency", { task_id: taskId, depends_on: retryId, reason: "the retry policy is what the task implements" });
@@ -119,17 +132,17 @@ async function main() {
     repo: "acme/shop",
   });
 
-  log("\n3. Codex picks it up in a fresh session: the graph hands it the retry decision through the task, with a receipt.");
+  step(3, "Codex picks it up in a fresh session: the graph hands it the retry decision through the task, with a receipt.");
   const pick = await codex("pickup_handoff", { repo: "acme/shop" });
   log(pick.text);
   expect(/Context manifest \(receipt [0-9a-f-]{36}\)/.test(pick.text), "pickup returns a context manifest with a receipt");
   expect(pick.text.includes("Checkout: retry the payment call on 5xx") && /task "Add retry/.test(pick.text), "manifest delivers the decision the task depends on, with the path");
 
-  log("\n4. A second agent racing for the same baton loses cleanly.");
+  step(4, "A second agent racing for the same baton loses cleanly.");
   const late = await claude("pickup_handoff", { repo: "acme/shop" });
   expect(!/Context manifest/.test(late.text), "only one agent takes the baton");
 
-  log("\n5. Claude Code finds the payments API isn't idempotent and proposes replacing the retry decision.");
+  step(5, "Claude Code finds the payments API isn't idempotent and proposes replacing the retry decision.");
   const repl = await claude("supersede_note", {
     id: retryId,
     title: "Checkout: no automatic retries until charges are idempotent",
@@ -141,37 +154,35 @@ async function main() {
   const replId = idIn(repl.text);
   expect(/Once witnessed, this affects/.test(repl.text) && /codex: handed p. \d+/.test(repl.text), "the proposal previews what it affects, including the agent that was told");
 
-  log("\n6. Before the user witnesses it, Codex's context hasn't changed: a proposal isn't the current page.");
+  step(6, "Before the user witnesses it, Codex's context hasn't changed: a proposal isn't the current page.");
   const early = await codex("check_context", { refresh: false });
   log(early.text);
   expect(/has changed/.test(early.text) && /Your context is current/.test(early.text), "an unwitnessed proposal doesn't change the context");
 
-  log("\n7. The user witnesses the replacement.");
+  step(7, "The user witnesses the replacement.");
   await witness(replId);
 
-  log("\n8. Codex finishes the old plan and tries to tick the task done: the server refuses, saying what changed.");
+  step(8, "Codex finishes the old plan and tries to tick the task done: the server refuses, saying what changed.");
   const tick = await codex("update_plan_item", { id: taskId, done: true });
   log(tick.text);
   expect(tick.isError && /REPLACED/.test(tick.text), "ticking done against a changed context is refused with the change");
 
-  log("\n9. Codex takes the new context: the replacement's text and a fresh receipt.");
+  step(9, "Codex takes the new context: the replacement's text and a fresh receipt.");
   const fresh = await codex("check_context", {});
   log(fresh.text);
   expect(/New receipt/.test(fresh.text) && fresh.text.includes("no automatic retries"), "check_context hands over the replacement");
 
-  log("\n10. With the new context in hand, the task can be ticked.");
+  step(10, "With the new context in hand, the task can be ticked.");
   const tick2 = await codex("update_plan_item", { id: taskId, done: true });
   log(tick2.text);
   expect(!tick2.isError, "ticking done after refreshing works");
 
-  log("\n11. What leans on the decision now.");
+  step(11, "What leans on the decision now.");
   const imp = await claude("impact_of_change", { note_id: replId });
   log(imp.text);
   expect(/Task "Add retry/.test(imp.text) && /codex: handed p. \d+ .*still current/.test(imp.text), "impact_of_change finds the task through the replaced page, and codex now current");
 
-  console.log(`\nAccount: ${EMAIL} / ${PASSWORD}`);
-  console.log(failures === 0 ? "All checks passed." : `${failures} check(s) failed.`);
-  process.exit(failures === 0 ? 0 : 1);
+  done();
 }
 
 main().catch((e) => {
