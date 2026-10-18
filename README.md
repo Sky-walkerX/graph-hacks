@@ -8,7 +8,7 @@ Built for [Graph Hacks](https://www.wemakedevs.org/hackathons/falkordb) (WeMakeD
 
 **Demo video:** _added at submission_ · **Live:** _added at submission_ · **Setup:** [run it yourself](#run-it)
 
-![The Context manifests panel: Codex was handed 2 pages; page 9 has since been replaced by page 11, so its context is out of date. The path the graph walked is shown, and the receipt lists each page, why it was included, and its revision.](docs/media/manifest-panel.png)
+![The Context manifests panel. Codex's receipt is out of date: page 11, which it was handed, has been replaced by page 12, and the path the graph walked is shown (baton, then the task, then page 9, then the chain to page 12). Below it, a task Codex already finished is flagged for review, because the context it was finished against has changed since.](docs/media/manifest-panel.png)
 
 ## The problem
 
@@ -24,9 +24,12 @@ Notes and search don't catch this, because nothing connects *the page Codex was 
 2. **A receipt.** Every page handed over is recorded on a `Receipt` node: its revision (a hash of its text), whether it was witnessed, and the path that made it relevant.
 3. **A change check before "done".** `check_context` compares the receipt with the context now: replaced, edited, newly witnessed, withdrawn, or added since. `update_plan_item` **refuses to tick the task done** while the receipt is out of date, and names the change. With the new context taken (a fresh receipt that `REFRESHES` the old one), it goes through.
 4. **Impact before you accept.** `supersede_note` and `impact_of_change` list everything that leans on a decision: tasks, batons and notes, each with its path, and which agents are working from it and whether their context is out of date.
-5. **You can see it.** The home page's **Context manifests** panel shows each agent's current receipt, a Current / Out of date stamp, what changed with the path the graph walked, and the receipt itself.
+5. **Finished work stays traceable.** Ticking a task done records the receipt it was finished against (`DONE_WITH`). If a page in that receipt changes later, `trace_task` and the app flag the finished work for review, and show exactly what it rested on.
+6. **Who knows what** (Track 03). `who_knows` searches decisions by topic, using a FalkorDB full-text index, or by file. It answers with the page that stands now, who wrote it, and which agents were handed it, marking those still holding a replaced version. `keystone_decisions` ranks the decisions the most work rests on by `algo.pageRank` over `DEPENDS_ON`.
+7. **Real agents get told.** The Claude Code plugin checks the receipt before every prompt with a hook. It stays silent unless something changed, and then tells Claude what changed before it carries on.
+8. **You can see it.** The home page shows each agent's receipt (Current / Out of date, what changed, the path the graph walked), finished work at risk, a "Who knows what" search, the keystone decisions, and the graph behind each receipt, drawn from exactly what the queries return.
 
-The whole story runs as a script against a live instance (`eval/scenario.mjs`). Every check passes (the first 10 shown):
+The whole story runs as a script against a live instance (`eval/scenario.mjs`), and all 16 checks pass:
 
 ```
 PASS link_dependency records task → decision
@@ -35,10 +38,16 @@ PASS manifest delivers the decision the task depends on, with the path
 PASS only one agent takes the baton
 PASS the proposal previews what it affects, including the agent that was told
 PASS an unwitnessed proposal doesn't change the context
+PASS the plugin's quiet check before each prompt says nothing while nothing changed
+PASS the plugin's quiet check before the next prompt tells Codex what changed
 PASS ticking done against a changed context is refused with the change
 PASS check_context hands over the replacement
 PASS ticking done after refreshing works
 PASS impact_of_change finds the task through the replaced page, and codex now current
+PASS the finished task is recorded against the receipt it was done with
+PASS trace_task flags finished work whose context changed after it was done
+PASS who_knows finds the current decision and marks codex's version out of date
+PASS keystone_decisions ranks the retry decision first, credited to the page that stands
 ```
 
 What Codex sees when it tries to finish the old plan:
@@ -51,6 +60,11 @@ Not ticked: the context you picked this task up with has changed.
 Call check_context to take the new context, check your work against it, then tick the task again.
 ```
 
+<table><tr>
+<td width="50%"><img src="docs/media/receipt-graph.png" alt="The graph behind a receipt, top to bottom: Codex, its receipt, the baton, the task and page 10, page 9 (faded, retired), page 11 (faded) and page 12 (current), with the receipt's deliveries dashed."></td>
+<td width="50%"><img src="docs/media/who-knows.png" alt="Who knows what, asked about payment retries: page 12 replaces pages 11 and 9; Claude Code wrote it; Codex was handed page 11, replaced since, shown in red."></td>
+</tr></table>
+
 ## How the tracks map
 
 | Track bullet | Where it is |
@@ -62,8 +76,10 @@ Call check_context to take the new context, check your work against it, then tic
 | **02** Episodic, semantic, procedural memory | Sessions and batons (episodic), witnessed notes and decisions (semantic), batons' "tried and ruled out" (procedural, in the card) |
 | **03** Tracing decisions back to their source | Every delivered page carries the path that made it relevant; receipts keep the exact revision |
 | **03** Keeping knowledge current as things change | Witnessed replacements change what's delivered; out-of-date receipts are flagged and refused at "done" |
-| **03** Who owns what, and who knows what | `RECORDED` (which agent wrote a decision), `RECEIVED`/`DELIVERED` (which agent was told what, and whether it's still true) |
-| **03** Answers with clear sources | Manifest lines and the receipt table cite page, path and revision |
+| **03** Who owns what, and who knows what | `who_knows`: full-text over decisions, then `RECORDED` (who wrote it) and `RECEIVED`/`DELIVERED` (who was told which version, and whether it still stands); `keystone_decisions`: PageRank over `DEPENDS_ON` |
+| **03** Answers with clear sources | Manifest lines, `trace_task` and the receipt table cite page, path and revision |
+| **03** Gets work done | The "done" guard and `trace_task` act on the graph, not just answer from it: stale work is refused or flagged |
+| **03** Knowledge from docs, tickets, chats in one graph | Partly: agents' notes, session summaries (captured by the plugin) and batons share one graph. External tickets and chat aren't ingested |
 
 ## Graph model
 
@@ -84,11 +100,12 @@ graph LR
   Receipt -- FOR --> Handoff
   Receipt -- "DELIVERED {hash, witnessed, why}" --> Note
   Receipt -- REFRESHES --> Receipt
+  Task -- "DONE_WITH {at, agent}" --> Receipt
 ```
 
 | Node | Key properties |
 |---|---|
-| `Note` | `id`, `page`, `title`, `hash` (revision), `witnessed`, `source`, `deleted` (kept so old receipts still resolve) |
+| `Note` | `id`, `page`, `title`, `summary` (first 600 characters, full-text indexed with `title`), `hash` (revision), `witnessed`, `source`, `deleted` (kept so old receipts still resolve) |
 | `Handoff` | `id`, `goal`, `status` (OPEN, PICKED_UP, SUPERSEDED), `source`, `pickedUpBy` |
 | `Task` | `id`, `title`, `done` |
 | `Receipt` | `id`, `at`, `agent`, `handoff`, `warnings` |
@@ -163,6 +180,38 @@ RETURN DISTINCT a.name AS agent, r.id AS receipt, r.at AS at, dl.page AS page,
        size([(n)<-[:SUPERSEDES {accepted: true}]-(:Note) | 1]) > 0 AS stale
 ```
 
+**Who knows about a topic**: full-text first, then the same resolution, then who holds which version:
+
+```cypher
+CALL db.idx.fulltext.queryNodes('Note', $q) YIELD node, score
+WHERE node.deleted = false
+RETURN node.id AS id, score ORDER BY score DESC LIMIT 20
+// resolved to the pages that stand now, then:
+UNWIND $ids AS id
+MATCH (n:Note {id: id})-[:SUPERSEDES*0..8]->(v:Note)<-[d:DELIVERED]-(r:Receipt)<-[:RECEIVED]-(a:Agent)
+WHERE NOT ()-[:REFRESHES]->(r)
+RETURN id, a.name AS agent, max(r.at) AS at, d.page AS page, v.id = id AS current
+```
+
+**Keystone decisions**: PageRank over dependencies, credited to the page that stands now (`lib/graph/brain.ts`):
+
+```cypher
+CALL algo.pageRank(NULL, 'DEPENDS_ON') YIELD node, score
+WITH node, score WHERE node:Note AND node.deleted = false
+MATCH (node)<-[:DEPENDS_ON]-()
+RETURN DISTINCT node.id AS id, score
+```
+
+**Finished work and what it rested on**:
+
+```cypher
+MATCH (t:Task {id: $task}), (r:Receipt {id: $receipt})
+MERGE (t)-[o:DONE_WITH]->(r) SET o.at = $at, o.agent = $agent
+// later: every finished task's receipt, diffed against its baton's context now
+MATCH (t:Task)-[o:DONE_WITH]->(r:Receipt) WHERE t.done = true
+RETURN t, o.agent, o.at, r.id, r.handoff
+```
+
 **No dependency loops**:
 
 ```cypher
@@ -191,18 +240,21 @@ Then play the story against it. This creates a demo account and two agent tokens
 ```sh
 BASE=http://localhost:3000 node eval/scenario.mjs
 BASE=http://localhost:3000 STOP_AFTER=7 node eval/scenario.mjs   # stop while Codex is out of date, then open the app
+BASE=http://localhost:3000 node eval/dogfood.mjs                 # a notebook of this project's own build decisions
 BASE=http://localhost:3000 node eval/race.mjs                    # 8 agents racing for each baton
 ```
+
+`eval/dogfood.mjs` isn't invented: it seeds the decisions we actually made building this today. It ends with the README handoff that went stale when the project was renamed from "LockIn Relay" to "LockIn Manifest", after the competitor sweep found three other entries called Relay.
 
 Sign-up is rate-limited. For repeated runs, set `RATE_LIMITS=off` in `.env`.
 
 FalkorDB Browser is at http://localhost:3001 (connect to `localhost:6379`) if you want to look at the graph itself.
 
-**Connect a real agent.** In LockIn, open **Settings → Connect your agents** and create a token. Then add the MCP server (`/api/mcp`) to Claude Code, Codex or Cursor. The Claude Code plugin is in [`integrations/claude-code`](integrations/claude-code). New tools: `check_context`, `link_dependency`, `impact_of_change`. Changed tools: `pickup_handoff`, `update_plan_item`, `supersede_note`.
+**Connect a real agent.** In LockIn, open **Settings → Connect your agents** and create a token. Then add the MCP server (`/api/mcp`) to Claude Code, Codex or Cursor. The Claude Code plugin is in [`integrations/claude-code`](integrations/claude-code). New tools: `check_context`, `link_dependency`, `impact_of_change`, `trace_task`, `who_knows`, `keystone_decisions`. Changed tools: `pickup_handoff`, `update_plan_item`, `supersede_note`. The plugin's new `UserPromptSubmit` hook runs `check_context` quietly before each prompt.
 
 **Deploy on GCP**: one VM running the same compose file behind Caddy, served at `https://<ip>.sslip.io`. See [`deploy/gcp`](deploy/gcp/README.md).
 
-**Tests**: `FALKORDB_URL=redis://localhost:6379 pnpm test lib/graph` runs the graph walks against a real FalkorDB. That covers chains, conflicts, loops, receipts, diffs, impact, and isolation between accounts.
+**Tests**: `FALKORDB_URL=redis://localhost:6379 pnpm test lib/graph` runs the graph walks against a real FalkorDB (14 tests). That covers chains, conflicts, loops, receipts, diffs, impact, isolation between accounts, full-text who-knows and PageRank keystones.
 
 ## Results
 
@@ -221,8 +273,8 @@ The original's pickup is a snapshot of the pinned pages, by design. These fixtur
 
 | Check | Result |
 |---|---|
-| Scenario (`eval/scenario.mjs`) | 13/13 checks pass |
-| Graph tests (`lib/graph/context.test.ts`, real FalkorDB) | 10/10 pass |
+| Scenario (`eval/scenario.mjs`) | 16/16 checks pass |
+| Graph tests (`lib/graph/*.test.ts`, real FalkorDB) | 14/14 pass |
 | Race, production Docker stack, 8 agents × 10 rounds | one winner every round; pickup p50 89 ms, p95 123 ms |
 | Race, production Docker stack, 16 agents × 10 rounds | one winner every round; pickup p50 144 ms, p95 197 ms; 16 concurrent `check_context` in 133 ms |
 
@@ -232,7 +284,7 @@ LockIn existed before the event. The import is its own commit (`99e7e3a`, from `
 
 | Before the event (LockIn) | Built during Graph Hacks |
 |---|---|
-| Notebook, MCP server, agent tokens, batons (`save_handoff` / `pickup_handoff`), witness workflow, `supersede_note`, Docker Compose | All of `lib/graph/` (FalkorDB client, per-account graphs, projection, context walks, receipts, diff, impact); `check_context`, `link_dependency`, `impact_of_change`; graph-backed `pickup_handoff`; the "done" guard in `update_plan_item`; impact preview in `supersede_note`; the fix for an unchecked claim in pickup; the Context manifests panel and `/api/manifest`; FalkorDB in Compose; GCP deploy; `eval/` |
+| Notebook, MCP server, agent tokens, batons (`save_handoff` / `pickup_handoff`), witness workflow, `supersede_note`, the Claude Code plugin, Docker Compose | All of `lib/graph/` (FalkorDB client, per-account graphs, projection, context walks, receipts, diff, impact, finished-work tracing, who-knows, keystones, receipt views); `check_context`, `link_dependency`, `impact_of_change`, `trace_task`, `who_knows`, `keystone_decisions`; graph-backed `pickup_handoff`; the "done" guard in `update_plan_item`; impact preview in `supersede_note`; the fix for the unchecked claim in pickup; the Context manifests and Who knows what panels, the receipt graph, `/api/manifest`, `/api/brain`; the plugin's `check_context` hook; FalkorDB in Compose; GCP deploy; `eval/` |
 
 The original LockIn README is at [`docs/lockin.md`](docs/lockin.md). The research and plan behind this entry are in [`LOCKIN_FALKORDB_RESEARCH_AND_PLAN.md`](LOCKIN_FALKORDB_RESEARCH_AND_PLAN.md).
 
