@@ -6,6 +6,7 @@ import type { Attention } from "@/lib/notes/attention";
 import type { Manifest } from "@/lib/graph/manifest";
 import type { Outcome } from "@/lib/graph/context";
 import type { Keystone, Known } from "@/lib/graph/brain";
+import type { FoundDoc, StaleAnswer } from "@/lib/graph/ask";
 
 type Json<T> = T extends Date ? string : T extends (infer U)[] ? Json<U>[] : T extends object ? { [K in keyof T]: Json<T[K]> } : T;
 export type HandoffRow = Json<Awaited<ReturnType<typeof listHandoffs>>[number]>;
@@ -63,7 +64,7 @@ export function useManifests() {
   });
 }
 
-export type BrainResult = Json<{ available: boolean; keystones: Keystone[]; known: Known[] }>;
+export type BrainResult = Json<{ available: boolean; keystones: Keystone[]; known: Known[]; docs: FoundDoc[]; reask: StaleAnswer[] }>;
 
 // Who knows what (q: a topic or a file), or with no q the decisions the most
 // work rests on. Read from the graph.
@@ -72,5 +73,15 @@ export function useBrain(q: string) {
     queryKey: queryKeys.brain(q),
     queryFn: () => api.get<BrainResult>(`/api/brain${q ? `?q=${encodeURIComponent(q)}` : ""}`),
     refetchOnMount: "always",
+  });
+}
+
+// An Ask conversation's answers that cite pages replaced or deleted since.
+export function useStaleAnswers(chat: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.brain(`chat:${chat}`),
+    queryFn: () => api.get<BrainResult>(`/api/brain?chat=${encodeURIComponent(chat!)}`),
+    enabled: Boolean(chat),
+    select: (d) => new Map(d.reask.map((a) => [a.id, a])),
   });
 }

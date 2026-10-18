@@ -12,7 +12,7 @@
 // STOP_AFTER=7 stops once the user has witnessed the replacement, leaving
 // Codex's context out of date: the state to open the app at for a demo.
 
-import { BASE, EMAIL, PASSWORD, agent, signUp, token, witness } from "./lib.mjs";
+import { BASE, EMAIL, PASSWORD, agent, signUp, token, web, witness } from "./lib.mjs";
 
 const QUIET = process.env.QUIET === "1";
 const STOP_AFTER = Number(process.env.STOP_AFTER ?? Infinity);
@@ -59,6 +59,18 @@ async function main() {
   const apiId = idIn(api.text);
   await witness(retryId);
   await witness(apiId);
+
+  // The user asks the notebook in Ask; the answer cites the retry decision.
+  // (The model runs in the browser, so the scenario saves the answer as the browser would.)
+  const post = (path, body) => web(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const retryPage = Number(retry.text.match(/on page (\d+)/)[1]);
+  const chat = await (await post("/api/chat/conversations", {})).json();
+  await post(`/api/chat/conversations/${chat.id}/prepare`, { content: "Should checkout retry a failed payment?", ragEnabled: false });
+  const saved = await post(`/api/chat/conversations/${chat.id}/messages`, {
+    content: `Yes: retry the charge up to 3 times with backoff on any 5xx [p. ${retryPage}].`,
+    refs: [{ page: retryPage, kind: "note", id: retryId, subjectId: "inbox", subjectTitle: "Inbox", title: "Checkout: retry the payment call on 5xx", inbox: true, retrieved: false }],
+  });
+  expect(saved.status === 201, "an Ask answer citing the retry decision is saved");
 
   step(2, "It plans the retry work, says the task rests on the retry decision, and hands off (usage cap).");
   const task = await claude("add_task", { title: "Add retry with backoff to checkout payment", note_id: retryId });
@@ -112,6 +124,12 @@ async function main() {
 
   const hook = await codex("check_context", { refresh: "false", quiet: "true" });
   expect(/REPLACED/.test(hook.text), "the plugin's quiet check before the next prompt tells Codex what changed");
+
+  const reask = await claude("stale_answers", {});
+  log(reask.text);
+  expect(/"Should checkout retry a failed payment\?".*was replaced by p\. \d+ "Checkout: no automatic retries/.test(reask.text), "the Ask answer built on the replaced decision is flagged");
+  const inChat = await (await web(`/api/brain?chat=${chat.id}`)).json();
+  expect(inChat.reask?.length === 1 && inChat.reask[0].cited[0].now?.title.startsWith("Checkout: no automatic retries"), "the chat itself marks that answer out of date");
 
   step(8, "Codex finishes the old plan and tries to tick the task done: the server refuses, saying what changed.");
   const tick = await codex("update_plan_item", { id: taskId, done: true });

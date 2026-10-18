@@ -21,6 +21,8 @@ export type Known = {
   replaced: number[];
   files: string[];
   knowers: Knower[];
+  /** Ask answers citing it: `current` cite this page, `stale` an earlier version it replaced. */
+  answers: { current: number; stale: number };
 };
 
 /** The pages that stand now for a set of notes, each with how strongly it was found. */
@@ -41,14 +43,17 @@ async function describe(graph: Graph, ids: string[]): Promise<Known[]> {
   if (ids.length === 0) return [];
   const rows = await read<{
     id: string; page: number | null; title: string; witnessed: boolean; source: string | null; replaced: number[]; files: string[];
+    current: number; stale: number;
   }>(
     graph,
     `UNWIND $ids AS id
      MATCH (n:Note {id: id})
      OPTIONAL MATCH (n)-[:SUPERSEDES*1..${CHAIN}]->(old:Note)
      OPTIONAL MATCH (n)-[:ABOUT_FILE]->(f:File)
+     OPTIONAL MATCH (old)<-[:CITES]-(was:Answer)
      RETURN id, n.page AS page, n.title AS title, n.witnessed AS witnessed, n.source AS source,
-            collect(DISTINCT old.page) AS replaced, collect(DISTINCT f.path) AS files`,
+            collect(DISTINCT old.page) AS replaced, collect(DISTINCT f.path) AS files,
+            size([(n)<-[:CITES]-(:Answer) | 1]) AS current, count(DISTINCT was) AS stale`,
     { ids },
   );
   // Agents handed this page or any version it replaced, in a receipt nothing refreshed.
@@ -77,12 +82,16 @@ async function describe(graph: Graph, ids: string[]): Promise<Known[]> {
       replaced: n.replaced.filter((p) => p != null).sort((a, b) => b - a),
       files: n.files.filter(Boolean),
       knowers,
+      answers: { current: n.current, stale: n.stale },
     }];
   });
 }
 
 // Full-text syntax (RediSearch) treats these as operators; a topic is plain words.
 const plain = (q: string) => q.replace(/[^\p{L}\p{N}\s_./-]/gu, " ").trim();
+
+/** A topic as a full-text query: any of its words. */
+export const anyWord = (topic: string) => plain(topic).split(/\s+/).filter((w) => w.length > 1).join(" | ");
 
 /**
  * What the notebook knows about a topic (words in notes' titles and text) or
@@ -93,7 +102,7 @@ const plain = (q: string) => q.replace(/[^\p{L}\p{N}\s_./-]/gu, " ").trim();
 export async function whoKnows(graph: Graph, find: { topic?: string; file?: string }): Promise<Known[]> {
   const found: { id: string; score: number }[] = [];
   if (find.topic && plain(find.topic)) {
-    const words = plain(find.topic).split(/\s+/).filter((w) => w.length > 1).join(" | ");
+    const words = anyWord(find.topic);
     found.push(
       ...(await read<{ id: string; score: number }>(
         graph,

@@ -32,8 +32,8 @@ import { noteMarks, readById, readPlan } from "@/lib/mcp/read";
 import { captureSession } from "@/lib/notes/capture";
 import { clipPages, formatHandoff, type PinnedPage } from "@/lib/handoff/card";
 import { latestOpen, markPickedUp, pinnedPages, saveHandoff, type Find } from "@/lib/handoff/store";
-import { changesForTask, check, deliver, dependOn, finished, impact, keystoneDecisions, knows, noteBaton, traceOutcomes } from "@/lib/graph/manifest";
-import { formatChanges, formatImpact, formatKeystones, formatKnown, formatManifest, formatOutcomes, formatReopened } from "@/lib/graph/format";
+import { answersToReask, changesForTask, check, deliver, dependOn, finished, impact, keystoneDecisions, knows, noteBaton, traceOutcomes } from "@/lib/graph/manifest";
+import { formatChanges, formatImpact, formatKeystones, formatKnown, formatManifest, formatOutcomes, formatReopened, formatStaleAnswers } from "@/lib/graph/format";
 
 // The notebook's MCP server: agents (Claude Code, Codex, Cursor…) list
 // subjects, search, read notes and plans, save and add to notes, edit the
@@ -652,8 +652,8 @@ const handler = createMcpHandler(
       async ({ topic, file }, ctx) => {
         const { userId } = caller(ctx.http?.authInfo);
         if (!topic && !file) return failed("Give a topic, a file, or both.");
-        const found = await knows(userId, { topic, file });
-        return text(formatKnown(found, [topic && `"${topic}"`, file].filter(Boolean).join(" or ")));
+        const { known, docs } = await knows(userId, { topic, file });
+        return text(formatKnown(known, [topic && `"${topic}"`, file].filter(Boolean).join(" or "), docs));
       },
     );
 
@@ -669,6 +669,21 @@ const handler = createMcpHandler(
       async ({ limit }, ctx) => {
         const { userId } = caller(ctx.http?.authInfo);
         return text(formatKeystones(await keystoneDecisions(userId, limit)));
+      },
+    );
+
+    server.registerTool(
+      "stale_answers",
+      {
+        title: "Find Ask answers built on replaced pages",
+        description:
+          "The user's Ask answers that cite a page the notebook has since moved past (replaced by a witnessed note, or deleted), with what stands now. Asking again answers from the current page. Give note_id for answers resting on one note.",
+        inputSchema: z.object({ note_id: z.string().min(1).max(64).optional().describe("Only answers citing this note or what it replaced") }),
+        annotations: { readOnlyHint: true },
+      },
+      async ({ note_id }, ctx) => {
+        const { userId } = caller(ctx.http?.authInfo);
+        return text(formatStaleAnswers(await answersToReask(userId, { noteId: note_id })));
       },
     );
 
