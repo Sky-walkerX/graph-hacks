@@ -1,5 +1,5 @@
 {
-  "description": "LockIn: file the session into the notebook when it compacts and when it ends, and show any open baton after a compaction.",
+  "description": "LockIn: file the session into the notebook when it compacts and when it ends, show any open baton after a compaction, and tell Claude when context it picked up has changed since.",
   "hooks": {
     "PostCompact": [
       {
@@ -40,6 +40,21 @@
           {
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/capture-on-exit.sh\""
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "mcp_tool",
+            "server": "lockin",
+            "tool": "check_context",
+            "input": {
+              "refresh": "false",
+              "quiet": "true"
+            }
           }
         ]
       }

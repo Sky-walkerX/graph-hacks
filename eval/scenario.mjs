@@ -102,9 +102,14 @@ async function main() {
   const early = await codex("check_context", { refresh: false });
   log(early.text);
   expect(/has changed/.test(early.text) && /Your context is current/.test(early.text), "an unwitnessed proposal doesn't change the context");
+  const hookEarly = await codex("check_context", { refresh: "false", quiet: "true" });
+  expect(hookEarly.text === "", "the plugin's quiet check before each prompt says nothing while nothing changed");
 
   step(7, "The user witnesses the replacement.");
   await witness(replId);
+
+  const hook = await codex("check_context", { refresh: "false", quiet: "true" });
+  expect(/REPLACED/.test(hook.text), "the plugin's quiet check before the next prompt tells Codex what changed");
 
   step(8, "Codex finishes the old plan and tries to tick the task done: the server refuses, saying what changed.");
   const tick = await codex("update_plan_item", { id: taskId, done: true });

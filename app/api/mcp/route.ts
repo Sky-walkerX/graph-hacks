@@ -544,14 +544,21 @@ const handler = createMcpHandler(
         inputSchema: z.object({
           receipt_id: z.string().min(1).max(64).optional().describe("The receipt from pickup_handoff; your newest one if left out"),
           refresh: z.union([z.boolean(), z.enum(["true", "false"])]).optional().describe("false to only report what changed"),
+          quiet: flag.describe("true to reply with nothing unless something changed (for hooks)"),
         }),
         annotations: { readOnlyHint: false, destructiveHint: false },
       },
-      async ({ receipt_id, refresh }, ctx) => {
+      async ({ receipt_id, refresh, quiet }, ctx) => {
         const { userId, source } = caller(ctx.http?.authInfo);
-        const result = await check(userId, source, receipt_id, refresh !== false && refresh !== "false");
+        const result = await check(userId, source, receipt_id, refresh !== false && refresh !== "false").catch((e) => {
+          if (quiet) return null;
+          throw e;
+        });
+        // A hook asks before every prompt: nothing to say unless something changed.
+        if (quiet && (!result || result.changes.length === 0)) return text("");
         if (!result) return failed(receipt_id ? `No receipt ${receipt_id} in this notebook.` : "You hold no receipt: pick up a baton with pickup_handoff first.");
         const lines = [formatChanges(result.changes, result.receipt.at)];
+        if (quiet) lines.push("Call check_context to take the new pages, and check your work against them before going on.");
         if (result.receipt.refreshed) lines.push("(That receipt was already refreshed; check the newer one.)");
         if (result.refreshed) {
           lines.push(`\nNew receipt ${result.refreshed.receipt.id}. The changed pages as they stand now:\n`, clipPages(result.refreshed.pages).join("\n\n"));
