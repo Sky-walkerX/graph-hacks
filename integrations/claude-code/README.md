@@ -1,6 +1,6 @@
 # LockIn for Claude Code
 
-A Claude Code plugin for [LockIn](https://lockin.namankhandelwal.dev), the notebook your AI tools write to.
+A Claude Code plugin for [LockIn](https://github.com/Sky-walkerX/graph-hacks), the notebook your AI tools write to.
 
 - **Nothing lost when a session compacts.** Before Claude Code compacts a conversation it summarises it. The plugin files that summary into your notebook as one note per session, which waits for you to witness it like anything else an agent saves. Later compactions in the same session add to that note.
 - **Or when it ends.** When you exit, `/clear` or switch sessions, the plugin starts a short background run of Claude on Haiku. The run resumes a copy of the session, writes what happened since the last compaction, and adds it to the same note. Your session history isn't changed, and sessions with fewer than two prompts are skipped.
@@ -16,7 +16,7 @@ Codex, Cursor and any other MCP client can take the same baton: ask them to pick
 2. Add the plugin:
 
    ```bash
-   claude plugin marketplace add Sky-walkerX/LockIn
+   claude plugin marketplace add Sky-walkerX/graph-hacks
    claude plugin install lockin@lockin
    ```
 
