@@ -8,20 +8,27 @@ import { FalkorDB, type Graph } from "falkordb";
 // A graph's name comes from the signed-in account, never from what an agent
 // sends, so one account's agents can't reach another's graph.
 
-type Conn = { db: Promise<FalkorDB> };
-const cache = globalThis as unknown as { falkor?: Conn };
+type Conn = { db: Promise<FalkorDB[]> };
+const cache = globalThis as unknown as { falkorPool?: Conn };
+
+// A connection runs one query at a time (the server answers a connection's
+// commands in order), so with one, every agent waits behind every other.
+// Queries go round a few connections instead; FalkorDB runs reads on them in
+// parallel. A write's reply comes after it commits, so a read sent after it,
+// on any connection, sees it.
+const POOL = Math.max(1, Number(process.env.FALKORDB_POOL ?? 8));
 
 /** Whether this instance has a graph at all (FALKORDB_URL is set). */
 export const graphConfigured = () => Boolean(process.env.FALKORDB_URL);
 
-function connect(): Promise<FalkorDB> {
-  if (!cache.falkor) {
-    const db = FalkorDB.connect({ url: process.env.FALKORDB_URL });
+function connect(): Promise<FalkorDB[]> {
+  if (!cache.falkorPool) {
+    const db = Promise.all(Array.from({ length: POOL }, () => FalkorDB.connect({ url: process.env.FALKORDB_URL })));
     // A failed connect is dropped, so the next call tries again.
-    db.catch(() => (cache.falkor = undefined));
-    cache.falkor = { db };
+    db.catch(() => (cache.falkorPool = undefined));
+    cache.falkorPool = { db };
   }
-  return cache.falkor.db;
+  return cache.falkorPool.db;
 }
 
 /** The graph's name for an account. Ids are uuids or cuids; anything else is dropped. */
@@ -41,6 +48,7 @@ const INDEXES = [
   "CREATE INDEX FOR (r:Repo) ON (r.name)",
   "CREATE INDEX FOR (m:Meta) ON (m.key)",
   "CREATE INDEX FOR (a:Answer) ON (a.id)",
+  "CREATE INDEX FOR (a:Answer) ON (a.chat)",
   "CREATE INDEX FOR (d:Doc) ON (d.id)",
   "CREATE INDEX FOR (x:Attempt) ON (x.id)",
   // who_knows searches what notes say (lib/graph/brain.ts).
@@ -54,7 +62,7 @@ export async function graphFor(userId: string): Promise<Graph> {
   const name = graphName(userId);
   let graph: Graph;
   try {
-    graph = (await connect()).selectGraph(name);
+    graph = pooled((await connect()).map((db) => db.selectGraph(name)));
   } catch (e) {
     throw new GraphUnavailable(e);
   }
@@ -66,6 +74,18 @@ export async function graphFor(userId: string): Promise<Graph> {
     indexed.add(name);
   }
   return graph;
+}
+
+/** One graph across the pool: each query takes the next connection. */
+function pooled(graphs: Graph[]): Graph {
+  let next = 0;
+  const one = () => graphs[next++ % graphs.length];
+  const graph: Pick<Graph, "query" | "roQuery" | "delete"> = {
+    query: (q, o) => one().query(q, o),
+    roQuery: (q, o) => one().roQuery(q, o),
+    delete: () => graphs[0].delete(),
+  };
+  return graph as Graph;
 }
 
 export class GraphUnavailable extends Error {

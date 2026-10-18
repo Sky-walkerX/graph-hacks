@@ -52,7 +52,9 @@ export async function receiptView(graph: Graph, receiptId: string): Promise<View
   const chains = await read<{ ns: ViewNode[]; es: ViewEdge[] }>(
     graph,
     `UNWIND $ids AS id
-     MATCH p = (n:Note {id: id})<-[:SUPERSEDES*1..${CHAIN}]-(m:Note)
+     MATCH (n:Note {id: id})
+     WITH n
+     MATCH p = (n)<-[:SUPERSEDES*1..${CHAIN}]-(m:Note)
      RETURN [x IN nodes(p) | ${NODE}] AS ns, [e IN relationships(p) | ${EDGE}] AS es`,
     { ids },
   );

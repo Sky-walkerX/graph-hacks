@@ -60,7 +60,12 @@ async function describe(graph: Graph, ids: string[]): Promise<Known[]> {
   const handed = await read<{ id: string; agent: string; at: number; page: number | null; current: boolean }>(
     graph,
     `UNWIND $ids AS id
-     MATCH (n:Note {id: id})-[:SUPERSEDES*0..${CHAIN}]->(v:Note)<-[d:DELIVERED]-(r:Receipt)<-[:RECEIVED]-(a:Agent)
+     MATCH (n:Note {id: id})
+     // Step by step from the indexed note: as one pattern, the planner starts from every receipt.
+     WITH id, n
+     MATCH (n)-[:SUPERSEDES*0..${CHAIN}]->(v:Note)
+     WITH id, v
+     MATCH (v)<-[d:DELIVERED]-(r:Receipt)<-[:RECEIVED]-(a:Agent)
      WHERE NOT ()-[:REFRESHES]->(r)
      RETURN id, a.name AS agent, max(r.at) AS at, d.page AS page, v.id = id AS current`,
     { ids },
