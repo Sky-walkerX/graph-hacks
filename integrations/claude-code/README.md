@@ -5,7 +5,8 @@ A Claude Code plugin for [LockIn](https://lockin.namankhandelwal.dev), the noteb
 - **Nothing lost when a session compacts.** Before Claude Code compacts a conversation it summarises it. The plugin files that summary into your notebook as one note per session, which waits for you to witness it like anything else an agent saves. Later compactions in the same session add to that note.
 - **Or when it ends.** When you exit, `/clear` or switch sessions, the plugin starts a short background run of Claude on Haiku. The run resumes a copy of the session, writes what happened since the last compaction, and adds it to the same note. Your session history isn't changed, and sessions with fewer than two prompts are skipped.
 - **`/lockin:handoff`** leaves a baton for the next agent: the goal, where the work stands, what was ruled out, the exact next step, and which notebook pages to read first.
-- **`/lockin:pickup [subject or repo]`** takes the open baton and carries on from it. After a compaction, an open baton for the folder you're in is shown to Claude automatically.
+- **`/lockin:pickup [subject or repo]`** takes the open baton and carries on from it, with the context the graph works out for it and a receipt. After a compaction, an open baton for the folder you're in is shown to Claude automatically.
+- **Told when the ground moves.** Before each prompt the plugin checks the receipt (`check_context`). It stays silent unless a page Claude was handed has been replaced and witnessed, edited or withdrawn since; then Claude is told what changed before it carries on.
 
 Codex, Cursor and any other MCP client can take the same baton: ask them to pick up the LockIn baton, and they call `pickup_handoff`.
 
