@@ -32,8 +32,8 @@ import { noteMarks, readById, readPlan } from "@/lib/mcp/read";
 import { captureSession } from "@/lib/notes/capture";
 import { clipPages, formatHandoff, type PinnedPage } from "@/lib/handoff/card";
 import { latestOpen, markPickedUp, pinnedPages, saveHandoff, type Find } from "@/lib/handoff/store";
-import { changesForTask, check, deliver, dependOn, finished, impact, keystoneDecisions, knows, traceOutcomes } from "@/lib/graph/manifest";
-import { formatChanges, formatImpact, formatKeystones, formatKnown, formatManifest, formatOutcomes } from "@/lib/graph/format";
+import { changesForTask, check, deliver, dependOn, finished, impact, keystoneDecisions, knows, noteBaton, traceOutcomes } from "@/lib/graph/manifest";
+import { formatChanges, formatImpact, formatKeystones, formatKnown, formatManifest, formatOutcomes, formatReopened } from "@/lib/graph/format";
 
 // The notebook's MCP server: agents (Claude Code, Codex, Cursor…) list
 // subjects, search, read notes and plans, save and add to notes, edit the
@@ -125,7 +125,7 @@ async function pickUp({ userId, source, origin }: Caller, find: Find, peek: bool
   try {
     const delivered = await deliver(userId, source, baton.id);
     pages = delivered.pages;
-    manifest = formatManifest(delivered.receipt);
+    manifest = formatManifest(delivered.receipt, delivered.attempts);
   } catch (e) {
     console.error("Building a baton's context manifest failed", e);
     pages = await pinnedPages(userId, baton.pages);
@@ -504,6 +504,7 @@ const handler = createMcpHandler(
         if (saved === "no-subject") return noSubject(subject!);
         if (saved === "no-task") return failed(`No task with id ${task_id} in this notebook.`);
         if (saved === "no-note") return failed(`No note with id ${note_id} in this notebook.`);
+        if (tried?.length) await noteBaton(userId);
         const pick = saved.subject && !saved.subject.isInbox ? saved.subject.title : saved.repo ?? null;
         return text(
           `Baton saved${pick ? ` for ${pick}` : ""}. The next agent picks it up with pickup_handoff${pick ? ` (subject or repo "${pick}")` : ""}, or the user with /lockin:pickup in Claude Code.${origin ? `\n${origin}/contents` : ""}`,
@@ -558,6 +559,8 @@ const handler = createMcpHandler(
         if (quiet && (!result || result.changes.length === 0)) return text("");
         if (!result) return failed(receipt_id ? `No receipt ${receipt_id} in this notebook.` : "You hold no receipt: pick up a baton with pickup_handoff first.");
         const lines = [formatChanges(result.changes, result.receipt.at)];
+        const retry = formatReopened(result.attempts);
+        if (retry) lines.push("", retry);
         if (quiet) lines.push("Call check_context to take the new pages, and check your work against them before going on.");
         if (result.receipt.refreshed) lines.push("(That receipt was already refreshed; check the newer one.)");
         if (result.refreshed) {

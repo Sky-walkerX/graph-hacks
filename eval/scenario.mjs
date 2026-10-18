@@ -69,6 +69,7 @@ async function main() {
   await claude("save_handoff", {
     goal: "Retry failed checkout payments with backoff",
     state: "Decision recorded; retry wrapper half-written in lib/checkout/pay.ts, no tests yet.",
+    tried: ["A queue that retries failed charges in the background: ruled out, the retry decision says retry inline on 5xx"],
     next: "Finish the retry wrapper and add a test for 3 retries on 503.",
     next_at: "lib/checkout/pay.ts:40",
     pages: [apiPage],
@@ -81,6 +82,7 @@ async function main() {
   log(pick.text);
   expect(/Context manifest \(receipt [0-9a-f-]{36}\)/.test(pick.text), "pickup returns a context manifest with a receipt");
   expect(pick.text.includes("Checkout: retry the payment call on 5xx") && /task "Add retry/.test(pick.text), "manifest delivers the decision the task depends on, with the path");
+  expect(/Tried and ruled out before:\n- "A queue that retries/.test(pick.text) && /premises still stand/.test(pick.text), "pickup hands over what was ruled out, and on which pages");
 
   step(4, "A second agent racing for the same baton loses cleanly.");
   const late = await claude("pickup_handoff", { repo: "acme/shop" });
@@ -120,6 +122,7 @@ async function main() {
   const fresh = await codex("check_context", {});
   log(fresh.text);
   expect(/New receipt/.test(fresh.text) && fresh.text.includes("no automatic retries"), "check_context hands over the replacement");
+  expect(/"A queue that retries[^\n]*has since been replaced by p\. \d+[^\n]*may be worth retrying/.test(fresh.text), "an attempt ruled out on the replaced decision is flagged as worth retrying");
 
   step(10, "With the new context in hand, the task can be ticked.");
   const tick2 = await codex("update_plan_item", { id: taskId, done: true });
