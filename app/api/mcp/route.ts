@@ -32,8 +32,8 @@ import { noteMarks, readById, readPlan } from "@/lib/mcp/read";
 import { captureSession } from "@/lib/notes/capture";
 import { clipPages, formatHandoff, type PinnedPage } from "@/lib/handoff/card";
 import { latestOpen, markPickedUp, pinnedPages, saveHandoff, type Find } from "@/lib/handoff/store";
-import { changesForTask, check, deliver, dependOn, finished, impact, traceOutcomes } from "@/lib/graph/manifest";
-import { formatChanges, formatImpact, formatManifest, formatOutcomes } from "@/lib/graph/format";
+import { changesForTask, check, deliver, dependOn, finished, impact, keystoneDecisions, knows, traceOutcomes } from "@/lib/graph/manifest";
+import { formatChanges, formatImpact, formatKeystones, formatKnown, formatManifest, formatOutcomes } from "@/lib/graph/format";
 
 // The notebook's MCP server: agents (Claude Code, Codex, Cursor…) list
 // subjects, search, read notes and plans, save and add to notes, edit the
@@ -624,6 +624,41 @@ const handler = createMcpHandler(
           return text(task_id ? `Task ${task_id} wasn't ticked done against a receipt (it wasn't picked up from a baton, or isn't done).` : "No finished work rests on a page that has changed since.");
         }
         return text(formatOutcomes(shown));
+      },
+    );
+
+    server.registerTool(
+      "who_knows",
+      {
+        title: "Find what's known about a topic or file, and who knows it",
+        description:
+          "Search the notebook's decisions and findings by topic (words in their titles and text) or by file path, and get the pages that stand now (following witnessed replacements), with who wrote each and which agents were handed it, marking those holding an out-of-date version. Use it before deciding something that may already be decided, or to find who to ask.",
+        inputSchema: z.object({
+          topic: z.string().trim().max(200).optional().describe("Words to search for, e.g. \"payment retries\""),
+          file: z.string().trim().max(300).optional().describe("A file path, or the end of one, e.g. \"checkout/pay.ts\""),
+        }),
+        annotations: { readOnlyHint: true },
+      },
+      async ({ topic, file }, ctx) => {
+        const { userId } = caller(ctx.http?.authInfo);
+        if (!topic && !file) return failed("Give a topic, a file, or both.");
+        const found = await knows(userId, { topic, file });
+        return text(formatKnown(found, [topic && `"${topic}"`, file].filter(Boolean).join(" or ")));
+      },
+    );
+
+    server.registerTool(
+      "keystone_decisions",
+      {
+        title: "List the decisions the most work rests on",
+        description:
+          "The notebook's load-bearing decisions: ranked by PageRank over dependencies (link_dependency), each with how much open work rests on it and which agents are working from it. Change these most carefully: check impact_of_change first.",
+        inputSchema: z.object({ limit: z.number().int().min(1).max(20).optional().describe("How many (default 5)") }),
+        annotations: { readOnlyHint: true },
+      },
+      async ({ limit }, ctx) => {
+        const { userId } = caller(ctx.http?.authInfo);
+        return text(formatKeystones(await keystoneDecisions(userId, limit)));
       },
     );
 

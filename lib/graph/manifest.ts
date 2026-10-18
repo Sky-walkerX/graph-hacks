@@ -6,6 +6,7 @@ import {
   type Change, type Delivered, type Item, type Receipt,
 } from "./context";
 import { projectTask, syncedGraph } from "./project";
+import { keystones, whoKnows } from "./brain";
 
 // The manifest: what a baton's next agent is handed, worked out in the graph
 // and kept as a receipt, then checked against the notebook as it moves on.
@@ -128,4 +129,14 @@ export async function dependOn(userId: string, agent: string, from: { taskId?: s
   const graph = await syncedGraph(userId);
   if (from.taskId && !(await projectTask(graph, userId, from.taskId))) return "missing-from" as const;
   return linkDependency(graph, (from.taskId ?? from.noteId)!, on, agent, reason);
+}
+
+/** What's known about a topic or a file, and by which agents: see whoKnows. */
+export async function knows(userId: string, find: { topic?: string; file?: string }) {
+  return whoKnows(await syncedGraph(userId), find);
+}
+
+/** The decisions the most work rests on: see keystones. */
+export async function keystoneDecisions(userId: string, limit?: number) {
+  return keystones(await syncedGraph(userId), limit);
 }

@@ -639,6 +639,14 @@
   .lk-manifest-evidence table { width: 100%; margin-top: 6px; border-collapse: collapse; }
   .lk-manifest-evidence th { text-align: left; font-weight: 600; color: var(--muted-foreground); padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); }
   .lk-manifest-evidence td { padding: 4px 8px 4px 0; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+  .lk-brain-input {
+    flex: 1; min-width: 0; padding: 4px 8px; font-size: 14.5px; border: 1px solid var(--border); border-radius: 2px;
+    background: var(--background); color: var(--foreground);
+  }
+  .lk-brain-knowers { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: 14px; }
+  .lk-brain-knowers b { font-weight: 600; color: var(--lk-live); }
+  .lk-brain-stale { color: var(--lk-stamp); }
+  .lk-brain-stale b { color: var(--lk-stamp); }
   .lk-manifest-warnings { margin-top: 6px; display: grid; gap: 3px; color: var(--lk-warn); }
   @media (max-width: 640px) { .lk-manifest-evidence th:nth-child(3), .lk-manifest-evidence td:nth-child(3) { display: none; } }
 

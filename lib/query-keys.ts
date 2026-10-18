@@ -14,6 +14,7 @@ export const queryKeys = {
   attention: ["notes", "attention"],
   handoffs: ["handoffs"],
   manifests: ["manifests"],
+  brain: (q: string) => ["brain", q] as const,
   account: ["account"],
   tokens: ["tokens"],
   connectedApps: ["oauth-grants"],
