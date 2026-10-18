@@ -245,8 +245,8 @@ export type Impact = {
   note: { id: string; page: number | null; title: string };
   /** Tasks, batons and notes that lean on it, each with the path that says so. */
   dependents: { kind: string; id: string; label: string; status: string | null; path: Step[] }[];
-  /** Agents given it (or a page that leans on it) in a receipt nothing has refreshed. */
-  told: { agent: string; receipt: string; at: number; handoff: string; page: number | null }[];
+  /** Agents given it (or a page that leans on it) in a receipt nothing has refreshed; `stale` when what they were given has been replaced since. */
+  told: { agent: string; receipt: string; at: number; handoff: string; page: number | null; stale: boolean }[];
 };
 
 /**
@@ -277,7 +277,8 @@ export async function impactOf(graph: Graph, noteId: string): Promise<Impact | n
      WITH DISTINCT base
      MATCH (a:Agent)-[:RECEIVED]->(r:Receipt)-[dl:DELIVERED]->(n:Note)-[:DEPENDS_ON*0..${CONTEXT_HOPS}]->(base)
      WHERE NOT ()-[:REFRESHES]->(r)
-     RETURN DISTINCT a.name AS agent, r.id AS receipt, r.at AS at, r.handoff AS handoff, dl.page AS page
+     RETURN DISTINCT a.name AS agent, r.id AS receipt, r.at AS at, r.handoff AS handoff, dl.page AS page,
+            size([(n)<-[:SUPERSEDES {accepted: true}]-(:Note) | 1]) > 0 AS stale
      ORDER BY at DESC`,
     { id: noteId },
   );
