@@ -26,7 +26,7 @@ Notes and search don't catch this, because nothing connects *the page Codex was 
 4. **Impact before you accept.** `supersede_note` and `impact_of_change` list everything that leans on a decision: tasks, batons and notes, each with its path, and which agents are working from it and whether their context is out of date.
 5. **You can see it.** The home page's **Context manifests** panel shows each agent's current receipt, a Current / Out of date stamp, what changed with the path the graph walked, and the receipt itself.
 
-The whole story runs as a script against a live instance (`eval/scenario.mjs`), with 10 checks. Every check passes:
+The whole story runs as a script against a live instance (`eval/scenario.mjs`). Every check passes (the first 10 shown):
 
 ```
 PASS link_dependency records task → decision
@@ -206,15 +206,25 @@ FalkorDB Browser is at http://localhost:3001 (connect to `localhost:6379`) if yo
 
 ## Results
 
-Measured on one machine against a development server (`next dev`), so the numbers include HTTP, auth, Postgres and FalkorDB together, and are not a FalkorDB benchmark:
+**Against the original LockIn.** We ran the same 12 frozen fixtures through the same MCP calls against the original LockIn (the imported commit) and against LockIn Manifest. The expectations were fixed before either ran. Full table: [`eval/RESULTS.md`](eval/RESULTS.md).
+
+| | LockIn (original) | LockIn Manifest |
+|---|---|---|
+| Fixtures passed (`eval/baseline.mjs`) | **5/12** | **12/12** |
+| Both pass | F1 unchanged page, F8 same-file note left out, F9 deleted page, F11 other account, F12 two-agent race | |
+| Only Manifest passes | | F2 replaced page, F3 three-step chain, F4 pending proposal warned, F5 conflict flagged, F6 task dependency, F7 transitive dependency, F10 "done" refused after a change |
+| 8 agents racing for one baton, 10 rounds (`eval/race.mjs`) | **0/10** rounds with one winner: 5–8 agents per round were each told they had it | **10/10** |
+
+The original's pickup is a snapshot of the pinned pages, by design. These fixtures are the cases where the notebook moved on after the baton was left, which is when a snapshot goes wrong.
+
+**The rest**, on one machine. The numbers include HTTP, auth, Postgres and FalkorDB together, so they are not a FalkorDB benchmark:
 
 | Check | Result |
 |---|---|
-| Scenario (`eval/scenario.mjs`) | 10/10 checks pass |
+| Scenario (`eval/scenario.mjs`) | 13/13 checks pass |
 | Graph tests (`lib/graph/context.test.ts`, real FalkorDB) | 10/10 pass |
-| 8 agents racing for one baton, 10 rounds (`eval/race.mjs`) | exactly one winner every round; 0 unexpected replies |
-| `pickup_handoff` under that contention (80 calls) | p50 141 ms, p95 219 ms |
-| 8 concurrent `check_context` calls | all done in 184 ms |
+| Race, production Docker stack, 8 agents × 10 rounds | one winner every round; pickup p50 89 ms, p95 123 ms |
+| Race, production Docker stack, 16 agents × 10 rounds | one winner every round; pickup p50 144 ms, p95 197 ms; 16 concurrent `check_context` in 133 ms |
 
 ## What was reused and what is new
 

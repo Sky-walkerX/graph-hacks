@@ -45,7 +45,7 @@ async function main() {
     await lead("save_handoff", { goal: `Round ${round}`, state: "Waiting", next: "Take it", task_id: taskId, repo: `race/round-${round}` });
 
     const results = await Promise.all(agents.map((a) => timed(() => a.call("pickup_handoff", { repo: `race/round-${round}` }))));
-    const won = results.filter(({ r }) => /Context manifest \(receipt/.test(r.text));
+    const won = results.filter(({ r }) => /You.ve picked this up/.test(r.text));
     const lost = results.filter(({ r }) => /Another agent took the baton/.test(r.text) || /No baton is open/.test(r.text));
     errors += results.length - won.length - lost.length;
     winners.push(won.length);
