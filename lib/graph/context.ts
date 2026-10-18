@@ -391,3 +391,44 @@ export async function outcomes(graph: Graph, taskId?: string): Promise<Outcome[]
     }),
   );
 }
+
+export type Attempt = {
+  id: string;
+  text: string;
+  at: number;
+  source: string;
+  /** The pages it was ruled out under, and what replaced each since (witnessed), if anything. */
+  premises: { page: number | null; title: string; replacedBy: { page: number | null; title: string } | null }[];
+};
+
+/**
+ * What was tried and ruled out on a baton's work: its own attempts and those
+ * of every earlier baton for the same task. An attempt whose premise has been
+ * replaced since may be worth retrying; the rest still stand.
+ */
+export async function attemptsFor(graph: Graph, handoffId: string): Promise<Attempt[]> {
+  const rows = await read<Omit<Attempt, "premises"> & { premises: { page: number | null; title: string | null; newPage: number | null; newTitle: string | null }[] }>(
+    graph,
+    `MATCH (h:Handoff {id: $h})
+     OPTIONAL MATCH (h)-[:TRIED]->(own:Attempt)
+     OPTIONAL MATCH (h)-[:FOR]->(:Task)<-[:ON]-(same:Attempt)
+     WITH collect(DISTINCT own) + collect(DISTINCT same) AS xs
+     UNWIND xs AS x
+     WITH DISTINCT x
+     OPTIONAL MATCH (x)-[:ASSUMED]->(n:Note)
+     OPTIONAL MATCH (n)<-[:SUPERSEDES {accepted: true}]-(newer:Note)
+     RETURN DISTINCT x.id AS id, x.text AS text, x.at AS at, x.source AS source,
+            collect(DISTINCT {page: n.page, title: n.title, newPage: newer.page, newTitle: newer.title}) AS premises
+     ORDER BY at DESC`,
+    { h: handoffId },
+  );
+  return rows.map((r) => ({
+    ...r,
+    premises: r.premises
+      .filter((p) => p.title != null)
+      .map((p) => ({ page: p.page, title: p.title!, replacedBy: p.newTitle != null ? { page: p.newPage, title: p.newTitle } : null })),
+  }));
+}
+
+/** Whether an attempt's premise has moved on since it was ruled out. */
+export const reopened = (a: Attempt) => a.premises.some((p) => p.replacedBy);

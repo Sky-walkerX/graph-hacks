@@ -1,4 +1,4 @@
-import type { Change, Impact, Item, Outcome, Receipt, Step } from "./context";
+import { reopened, type Attempt, type Change, type Impact, type Item, type Outcome, type Receipt, type Step } from "./context";
 import type { Keystone, Known } from "./brain";
 
 // The manifest, its changes and a note's impact, as an agent reads them in an
@@ -21,12 +21,32 @@ function line(i: Item): string {
   return `- ${page(i)} (note ${i.id}), via ${why}.${replaced}${status}`;
 }
 
+function attemptLine(a: Attempt): string {
+  const moved = a.premises.filter((p) => p.replacedBy);
+  if (moved.length === 0) return `- "${a.text}" (${a.source}). Its premises still stand${a.premises.length ? `: ${a.premises.map((p) => page(p)).join(", ")}` : ""}.`;
+  return `- "${a.text}" (${a.source}). Ruled out while ${moved.map((p) => `${page(p)} stood; it has since been replaced by ${page(p.replacedBy!)}`).join(", and ")}. This may be worth retrying.`;
+}
+
+/** What was tried and ruled out on this work, newest first. */
+export function formatAttempts(attempts: Attempt[]): string {
+  if (attempts.length === 0) return "";
+  return ["Tried and ruled out before:", ...attempts.map(attemptLine)].join("\n");
+}
+
+/** Attempts whose premise moved on, for check_context. */
+export function formatReopened(attempts: Attempt[]): string {
+  const open = attempts.filter(reopened);
+  if (open.length === 0) return "";
+  return [`${open.length} attempt${open.length === 1 ? " that was" : "s that were"} ruled out rested on a page that has changed:`, ...open.map(attemptLine)].join("\n");
+}
+
 /** The manifest section of a picked-up baton. */
-export function formatManifest(receipt: Receipt): string {
+export function formatManifest(receipt: Receipt, attempts: Attempt[] = []): string {
   const lines = [`## Context manifest (receipt ${receipt.id})`];
   if (receipt.items.length === 0) lines.push("The graph links no pages to this baton.");
   else lines.push("The graph found these pages for this work; the pages below are their current text.", ...receipt.items.map(line));
   if (receipt.warnings.length > 0) lines.push("", "Careful:", ...receipt.warnings.map((w) => `- ${w}`));
+  if (attempts.length > 0) lines.push("", formatAttempts(attempts));
   lines.push(
     "",
     "Before you tick the task done or leave a baton, call check_context: it says whether any of these pages changed since now.",

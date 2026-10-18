@@ -2,8 +2,8 @@ import prisma from "@/lib/prisma";
 import type { PinnedPage } from "@/lib/handoff/card";
 import { GraphUnavailable, read } from "./client";
 import {
-  contextFor, diff, findReceipt, impactOf, linkDependency, outcomes, receiptForTask, recordOutcome, recordReceipt,
-  type Change, type Delivered, type Item, type Receipt,
+  attemptsFor, contextFor, diff, findReceipt, impactOf, linkDependency, outcomes, receiptForTask, recordOutcome, recordReceipt,
+  type Attempt, type Change, type Delivered, type Item, type Receipt,
 } from "./context";
 import { projectTask, syncedGraph } from "./project";
 import { keystones, whoKnows } from "./brain";
@@ -25,14 +25,14 @@ async function pagesOf(userId: string, items: Item[]): Promise<PinnedPage[]> {
   return items.flatMap((i) => rows.filter((r) => r.id === i.id));
 }
 
-export type Delivery = { receipt: Receipt; pages: PinnedPage[] };
+export type Delivery = { receipt: Receipt; pages: PinnedPage[]; attempts: Attempt[] };
 
 /** Works out a baton's context for `agent`, records the receipt, and returns both. */
 export async function deliver(userId: string, agent: string, handoffId: string, refreshes?: string): Promise<Delivery> {
   const graph = await syncedGraph(userId);
   const context = await contextFor(graph, handoffId);
   const receipt = await recordReceipt(graph, handoffId, agent, context, refreshes);
-  return { receipt, pages: await pagesOf(userId, context.items) };
+  return { receipt, pages: await pagesOf(userId, context.items), attempts: await attemptsFor(graph, handoffId) };
 }
 
 export type Check = {
@@ -40,6 +40,8 @@ export type Check = {
   changes: Change[];
   /** The new receipt and the changed pages' text, when asked to refresh and something changed. */
   refreshed: Delivery | null;
+  /** What was tried and ruled out on this work, with whether its premise has moved on. */
+  attempts: Attempt[];
 };
 
 /**
@@ -53,13 +55,14 @@ export async function check(userId: string, agent: string, receiptId: string | u
   if (!found) return null;
   const now = await contextFor(graph, found.handoff);
   const changes = diff(found.delivered, now.items);
+  const attempts = await attemptsFor(graph, found.handoff);
   let refreshed: Delivery | null = null;
   if (refresh && changes.length > 0) {
     const receipt = await recordReceipt(graph, found.handoff, agent, now, found.id);
     const changed = now.items.filter((i) => changes.some((c) => "now" in c && c.now.id === i.id));
-    refreshed = { receipt, pages: await pagesOf(userId, changed) };
+    refreshed = { receipt, pages: await pagesOf(userId, changed), attempts };
   }
-  return { receipt: { id: found.id, at: found.at, handoff: found.handoff, refreshed: found.refreshed }, changes, refreshed };
+  return { receipt: { id: found.id, at: found.at, handoff: found.handoff, refreshed: found.refreshed }, changes, refreshed, attempts };
 }
 
 /** The changes since `agent` picked up the baton for a task, if it did. Null when it holds no receipt for it. */
@@ -145,4 +148,13 @@ export async function keystoneDecisions(userId: string, limit?: number) {
 /** A receipt as nodes and relationships, for drawing: see receiptView. */
 export async function viewReceipt(userId: string, receiptId: string) {
   return receiptView(await syncedGraph(userId), receiptId);
+}
+
+/**
+ * Projects a just-saved baton, so what it says was tried is tied to the pages
+ * that stood when it was left, not whatever stands at the first read after.
+ * Best effort: the graph catching up later only loosens that.
+ */
+export async function noteBaton(userId: string): Promise<void> {
+  await syncedGraph(userId).catch((e) => console.error("Projecting a new baton failed", e));
 }

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Graph } from "falkordb";
 import prisma from "@/lib/prisma";
 import { graphFor, read, run } from "./client";
+import { contextFor } from "./context";
 
 // The notebook, projected into the account's graph. Postgres stays the
 // authority on notes, tasks and batons; the graph gets what it needs to walk
@@ -28,7 +29,7 @@ export const revision = (title: string, notes: string) =>
 const OVERLAP_MS = 5_000;
 const BATONS = 200;
 /** Bumped when what a note's node holds changes, so existing graphs project every note again. */
-const VERSION = 2;
+const VERSION = 3;
 /** How much of a note's text its node keeps, for full-text search. */
 const SUMMARY = 600;
 
@@ -180,7 +181,7 @@ async function projectBatons(graph: Graph, userId: string) {
     take: BATONS,
     select: {
       id: true, source: true, goal: true, next: true, status: true, createdAt: true, pickedUpAt: true, pickedUpBy: true,
-      repo: true, subjectId: true, noteId: true, pages: true, task: { select: { id: true, title: true, isCompleted: true } },
+      repo: true, subjectId: true, noteId: true, pages: true, tried: true, task: { select: { id: true, title: true, isCompleted: true } },
     },
   });
   if (batons.length === 0) return;
@@ -240,6 +241,44 @@ async function projectBatons(graph: Graph, userId: string) {
      SET e.order = p.order`,
     { pins },
   );
+  await projectAttempts(graph, batons.map((b) => ({ id: b.id, source: b.source, at: b.createdAt.getTime(), tried: b.tried })));
+}
+
+/**
+ * Procedural memory: what a baton says was tried and ruled out becomes an
+ * Attempt, tied to the baton's task and to the pages the baton rested on when
+ * it was left (ASSUMED). An attempt is linked once, when first seen, so its
+ * premises stay the ones it was ruled out under; when one of them is later
+ * replaced, the attempt may be worth another go (attemptsFor).
+ */
+export async function projectAttempts(graph: Graph, batons: { id: string; source: string; at: number; tried: string[] }[]) {
+  const attempts = batons.flatMap((b) => b.tried.map((text, i) => ({ id: `${b.id}:${i}`, h: b.id, text, at: b.at, source: b.source })));
+  if (attempts.length === 0) return;
+  await run(
+    graph,
+    `UNWIND $attempts AS a
+     MATCH (h:Handoff {id: a.h})
+     MERGE (x:Attempt {id: a.id})
+     ON CREATE SET x.text = a.text, x.at = a.at, x.source = a.source, x.linked = false
+     MERGE (h)-[:TRIED]->(x)`,
+    { attempts },
+  );
+  const fresh = await read<{ id: string; h: string }>(graph, "MATCH (h:Handoff)-[:TRIED]->(x:Attempt {linked: false}) RETURN x.id AS id, h.id AS h");
+  for (const { id, h } of fresh) {
+    const { items } = await contextFor(graph, h);
+    await run(
+      graph,
+      `MATCH (x:Attempt {id: $id})
+       OPTIONAL MATCH (:Handoff {id: $h})-[:FOR]->(t:Task)
+       FOREACH (_ IN CASE WHEN t IS NULL THEN [] ELSE [1] END | MERGE (x)-[:ON]->(t))
+       WITH x
+       UNWIND $notes AS nid
+       MATCH (n:Note {id: nid})
+       MERGE (x)-[:ASSUMED]->(n)`,
+      { id, h, notes: items.map((i) => i.id) },
+    );
+    await run(graph, "MATCH (x:Attempt {id: $id}) SET x.linked = true", { id });
+  }
 }
 
 /** Titles and completion of the tasks the graph knows, which change without a trace. */
