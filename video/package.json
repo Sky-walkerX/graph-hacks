@@ -1,0 +1,19 @@
+{
+  "name": "lockin-manifest-video",
+  "private": true,
+  "description": "Motion graphics for the README, made with Remotion. Not part of the app.",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "./render.sh"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.531",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.531"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2",
+    "typescript": "^5.9.3"
+  }
+}

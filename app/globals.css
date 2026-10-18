@@ -610,43 +610,16 @@
   .lk-baton-history ul { display: grid; gap: 4px; margin-top: 6px; }
   @media (max-width: 640px) { .lk-baton-fields { grid-template-columns: 1fr; } .lk-baton-fields dt { padding-top: 6px; } }
 
-  /* Home → Context manifests: what each agent was handed, and whether it still holds. */
-  .lk-manifest { padding: 10px 0 12px; border-top: 1px solid var(--border); }
-  .lk-manifest:first-child { border-top: 0; padding-top: 4px; }
-  .lk-manifest-sub {
-    margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
-    font-family: var(--lk-font-display); font-weight: 700; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted-foreground);
-  }
-  .lk-manifest-goal { margin-top: 2px; font-family: var(--lk-font-prose); font-size: 17px; line-height: 1.3; }
-  .lk-manifest-stamp {
-    font-family: var(--lk-font-display); font-weight: 700; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-    padding: 1px 7px; border: 1.5px solid var(--lk-ok); border-radius: 2px; color: var(--lk-ok);
-  }
-  .lk-manifest-stamp-stale { border-color: var(--lk-stamp); color: var(--lk-stamp); }
-  .lk-manifest-changes { display: grid; gap: 6px; margin-top: 8px; font-size: 14.5px; line-height: 1.45; }
-  .lk-manifest-tag {
-    font-family: var(--lk-font-display); font-weight: 700; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--lk-warn); margin-right: 4px;
-  }
-  .lk-manifest-path { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin-top: 4px; font-size: 13px; color: var(--muted-foreground); }
-  .lk-manifest-path li { position: relative; padding: 1px 7px; border: 1px solid var(--border); border-radius: 2px; background: var(--background); }
-  .lk-manifest-path li + li::before { content: "→"; position: absolute; left: -15px; }
-  .lk-manifest-path li.lk-manifest-path-then { border-color: var(--lk-stamp); color: var(--foreground); }
-  .lk-manifest-path li.lk-manifest-path-then::before { content: "⇒"; }
-  .lk-manifest-evidence { margin-top: 8px; font-size: 13.5px; }
-  .lk-manifest-evidence summary { cursor: pointer; color: var(--muted-foreground); }
-  .lk-manifest-evidence summary:hover { color: var(--foreground); }
-  .lk-manifest-evidence table { width: 100%; margin-top: 6px; border-collapse: collapse; }
-  .lk-manifest-evidence th { text-align: left; font-weight: 600; color: var(--muted-foreground); padding: 3px 8px 3px 0; border-bottom: 1px solid var(--border); }
-  .lk-manifest-evidence td { padding: 4px 8px 4px 0; vertical-align: top; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
   /* A receipt's graph (receipt-graph.tsx). */
   .lk-graph { margin-top: 8px; }
-  .lk-graph-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 2px; background: var(--background); }
+  .lk-graph-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 2px; }
   .lk-graph-scroll svg { margin: 0 auto; }
+  .lk-graph-scroll.lk-paper::before { display: none; }
   .lk-graph svg { display: block; }
   .lk-graph-node rect { fill: var(--card, var(--background)); stroke: var(--border); stroke-width: 1.2; }
-  .lk-graph-title { font-size: 12.5px; font-weight: 600; fill: var(--foreground); }
-  .lk-graph-sub { font-size: 11px; fill: var(--muted-foreground); }
+  .lk-graph-kind { font-family: var(--lk-font-display); font-weight: 700; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; fill: var(--muted-foreground); }
+  .lk-graph-title { font-family: var(--lk-font-body); font-size: 13.5px; font-weight: 600; fill: var(--foreground); }
+  .lk-graph-title-note { font-family: var(--lk-font-prose); font-size: 14.5px; }
   .lk-graph-agent rect, .lk-graph-receipt rect { stroke: var(--lk-live); }
   .lk-graph-delivered rect { stroke: var(--lk-live); stroke-width: 2; }
   .lk-graph-current rect { stroke: var(--lk-ok); stroke-width: 2; }
@@ -658,21 +631,11 @@
   .lk-graph-edge-proposed { stroke: var(--lk-warn); stroke-dasharray: 3 3; }
   .lk-graph-lit { stroke-width: 3.2; opacity: 1; }
   .lk-graph-arrow { fill: var(--muted-foreground); }
-  .lk-graph-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 12.5px; color: var(--muted-foreground); }
+  .lk-graph-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 13px; color: var(--muted-foreground); }
   .lk-graph-key { display: inline-block; width: 22px; height: 0; margin-right: 4px; vertical-align: middle; border-top: 2px solid; }
   .lk-graph-key-delivered { border-color: var(--lk-live); border-top-style: dashed; }
   .lk-graph-key-replaced { border-color: var(--lk-stamp); }
   .lk-graph-key-proposed { border-color: var(--lk-warn); border-top-style: dotted; }
-  .lk-brain-input {
-    flex: 1; min-width: 0; padding: 4px 8px; font-size: 14.5px; border: 1px solid var(--border); border-radius: 2px;
-    background: var(--background); color: var(--foreground);
-  }
-  .lk-brain-knowers { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-size: 14px; }
-  .lk-brain-knowers b { font-weight: 600; color: var(--lk-live); }
-  .lk-brain-stale { color: var(--lk-stamp); }
-  .lk-brain-stale b { color: var(--lk-stamp); }
-  .lk-manifest-warnings { margin-top: 6px; display: grid; gap: 3px; color: var(--lk-warn); }
-  @media (max-width: 640px) { .lk-manifest-evidence th:nth-child(3), .lk-manifest-evidence td:nth-child(3) { display: none; } }
 
   .lk-note-conflict {
     margin-bottom: 14px; padding: 10px 14px;
