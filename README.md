@@ -11,7 +11,7 @@
 <p>
   <img alt="Built on FalkorDB" src="https://img.shields.io/badge/graph-FalkorDB_4.22-b4372d?style=flat-square&labelColor=1b2a2f">
   <img alt="Graph Hacks: Tracks 02 and 03" src="https://img.shields.io/badge/Graph_Hacks-Tracks_02_%2B_03-24453b?style=flat-square&labelColor=1b2a2f">
-  <img alt="MCP: 24 tools" src="https://img.shields.io/badge/MCP-24_tools-24453b?style=flat-square&labelColor=1b2a2f">
+  <img alt="MCP: 25 tools" src="https://img.shields.io/badge/MCP-25_tools-24453b?style=flat-square&labelColor=1b2a2f">
   <img alt="Self-hosted with Docker Compose" src="https://img.shields.io/badge/self--hosted-docker_compose-24453b?style=flat-square&labelColor=1b2a2f&logo=docker&logoColor=white">
   <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-24453b?style=flat-square&labelColor=1b2a2f&logo=nextdotjs&logoColor=white">
   <img alt="Postgres 17" src="https://img.shields.io/badge/Postgres-17-24453b?style=flat-square&labelColor=1b2a2f&logo=postgresql&logoColor=white">
@@ -41,6 +41,9 @@ A baton is a snapshot, though, and decisions keep moving. **LockIn Manifest** pu
 6. **Finished work stays traceable.** A finished task remembers the receipt it was done against, and is flagged if a decision behind it changes later.
 7. **Who knows what.** Search a topic or a file to see the decision that stands, who wrote it, and which agents hold an older version. Keystone decisions are ranked with FalkorDB's PageRank.
 8. **Only one agent gets a handoff.** The original told up to eight racing agents they had all taken the same baton. Now exactly one does.
+9. **Dead ends are remembered, and reopened.** What a baton says was tried and ruled out is kept in the graph, tied to the decisions it assumed. The next agent on the task is told, and when one of those decisions is replaced, it hears the idea may be worth retrying.
+10. **Ask answers know when they're out of date.** Each answer is linked to the pages it cites. When one is replaced, the answer is stamped *Out of date* in the chat and listed under *Answers to ask again*. Saved documents turn up in *Who knows what* too.
+11. **Built for many agents.** 100 agents at once on a 5,000-note graph: 450 graph operations a second on 4 cores, 6 ms for a single agent ([`eval/LOAD.md`](eval/LOAD.md)).
 
 All of it shows up in the app, beside LockIn's own panels:
 
@@ -52,13 +55,16 @@ All of it shows up in the app, beside LockIn's own panels:
 <table><tr>
 <td width="50%"><img src="docs/media/who-knows.png" alt="Who knows what, asked about payment retries: page 12 replaces pages 11 and 9; Claude Code wrote it; Codex was handed page 11, replaced since."></td>
 <td width="50%"><img src="docs/media/receipt-graph.png" alt="The graph behind a receipt: Codex, its receipt, the baton, the task and page 10, then page 9 and page 11 (retired) and page 12, which stands now."></td>
+</tr><tr>
+<td width="50%"><img src="docs/media/ask-out-of-date.png" alt="An Ask answer citing page 9, stamped Out of date: page 9 was replaced by page 12. Ask again to answer from what stands now."></td>
+<td width="50%">Ask's answers live in the graph beside the decisions they cite. When a cited page is replaced, the answer says so.</td>
 </tr></table>
 
 ## The graph
 
 <img src="docs/media/graph-model.webp" alt="The graph model: Agent, Baton, Task, Notes, File and Receipt, joined by LEFT, FOR, DEPENDS_ON, SUPERSEDES, PINS, ABOUT_FILE, RECEIVED, DONE_WITH and DELIVERED." width="100%">
 
-One graph per account. Postgres keeps notes, tasks and batons; FalkorDB walks them, and alone holds dependencies, receipts and outcomes. The queries, the track mapping and the limits are in **[How it works](docs/how-it-works.md)**.
+One graph per account. Postgres keeps notes, tasks, batons, chats and documents; FalkorDB walks them, and alone holds dependencies, receipts, outcomes and what each ruled-out attempt assumed. Ask answers (`CITES`), saved documents and attempts (`TRIED`, `ASSUMED`) sit in the same graph. The queries, the track mapping and the limits are in **[How it works](docs/how-it-works.md)**.
 
 ## Tested against the original
 
@@ -68,13 +74,14 @@ The same twelve frozen cases, through the same MCP calls, against the original L
 |---|:---:|:---:|
 | Frozen cases ([`eval/baseline.mjs`](eval/baseline.mjs)) | 5 / 12 | **12 / 12** |
 | Rounds with one winner, 8 agents racing ([`eval/race.mjs`](eval/race.mjs)) | 0 / 10 | **10 / 10** |
-| End-to-end story ([`eval/scenario.mjs`](eval/scenario.mjs)) | | **16 / 16** |
+| End-to-end story ([`eval/scenario.mjs`](eval/scenario.mjs)) | | **21 / 21** |
+| Graph operations a second, 100 agents at once ([`eval/LOAD.md`](eval/LOAD.md)) | | **450** |
 
 Details, ties and timings: [`eval/RESULTS.md`](eval/RESULTS.md).
 
 ## Set it up
 
-<img src="docs/media/setup-film.webp" alt="Setup: clone, copy the env file, docker compose up; Postgres, FalkorDB, the migration and the app come up healthy; the scenario passes all 16 checks." width="100%">
+<img src="docs/media/setup-film.webp" alt="Setup: clone, copy the env file, docker compose up; Postgres, FalkorDB, the migration and the app come up healthy; the scenario passes all 21 checks." width="100%">
 
 You need Docker with Compose.
 
@@ -87,7 +94,7 @@ docker compose up -d --build    # Postgres, FalkorDB and LockIn on http://localh
 Then play the story against it. It makes a demo account and prints the login:
 
 ```sh
-node eval/scenario.mjs                 # the whole story, 16 checks
+node eval/scenario.mjs                 # the whole story, 21 checks
 STOP_AFTER=7 node eval/scenario.mjs    # stop while Codex is out of date, then open the app
 node eval/dogfood.mjs                  # a notebook of the decisions we made building this
 ```
