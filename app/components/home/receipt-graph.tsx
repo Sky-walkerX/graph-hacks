@@ -99,7 +99,8 @@ function nodeText(n: ViewNode): [string, string] {
     default:
       return [
         `${n.page != null ? pageLabel(n.page) : "Note"}${n.witnessed === false ? " · awaiting witness" : ""}${n.deleted ? " · deleted" : ""}`,
-        clip(n.label, 26),
+        // Spectral runs wider than Barlow.
+        clip(n.label, 23),
       ];
   }
 }

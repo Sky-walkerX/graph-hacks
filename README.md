@@ -44,7 +44,15 @@ A baton is a snapshot, though, and decisions keep moving. **LockIn Manifest** pu
 
 All of it shows up in the app, beside LockIn's own panels:
 
-<img src="docs/media/manifest-panel.png" alt="The Context manifests panel: Codex's receipt is out of date because page 11 was replaced by page 12; below it, a finished task is flagged for review." width="100%">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/manifest-panel-dark.png">
+  <img src="docs/media/manifest-panel.png" alt="The Context manifests panel: Codex's receipt is out of date because page 11 was replaced by page 12; below it, a finished task is flagged for review." width="100%">
+</picture>
+
+<table><tr>
+<td width="50%"><img src="docs/media/who-knows.png" alt="Who knows what, asked about payment retries: page 12 replaces pages 11 and 9; Claude Code wrote it; Codex was handed page 11, replaced since."></td>
+<td width="50%"><img src="docs/media/receipt-graph.png" alt="The graph behind a receipt: Codex, its receipt, the baton, the task and page 10, then page 9 and page 11 (retired) and page 12, which stands now."></td>
+</tr></table>
 
 ## The graph
 

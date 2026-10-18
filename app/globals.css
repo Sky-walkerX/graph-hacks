@@ -614,6 +614,7 @@
   .lk-graph { margin-top: 8px; }
   .lk-graph-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 2px; }
   .lk-graph-scroll svg { margin: 0 auto; }
+  .lk-graph-scroll.lk-paper::before { display: none; }
   .lk-graph svg { display: block; }
   .lk-graph-node rect { fill: var(--card, var(--background)); stroke: var(--border); stroke-width: 1.2; }
   .lk-graph-kind { font-family: var(--lk-font-display); font-weight: 700; font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase; fill: var(--muted-foreground); }
