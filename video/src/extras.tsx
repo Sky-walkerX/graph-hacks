@@ -142,3 +142,19 @@ export const Setup: React.FC = () => {
     </Paper>
   );
 };
+
+/** The blog's cover, at dev.to's 1000×420. */
+export const BlogCover: React.FC = () => {
+  useFonts();
+  return (
+    <Paper margin={48}>
+      <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 26 }}>
+        <CoverLabel at={-100} scale={0.6} stamp="Manifest" stampAt={-100} />
+        <div style={{ fontFamily: F.prose, fontStyle: "italic", fontSize: 34, color: C.ink }}>Every agent handoff, with a receipt.</div>
+        <Label size={14} color={C.ink}>
+          Built on FalkorDB · Graph Hacks 2026
+        </Label>
+      </AbsoluteFill>
+    </Paper>
+  );
+};
