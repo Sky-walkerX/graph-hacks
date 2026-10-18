@@ -62,10 +62,31 @@ export async function projectDocs(graph: Graph, userId: string, full: boolean) {
 
 /** Ask's answers written since the last sync, each with the pages it cites. */
 export async function projectAnswers(graph: Graph, userId: string, full: boolean) {
-  const since = await watermark(graph, "answers", full);
+  // Conversation deletion cascades its messages in Postgres; remove the
+  // projected excerpts and citations too, including on otherwise idle syncs.
+  const chats = await read<{ chat: string }>(graph, "MATCH (a:Answer) RETURN DISTINCT a.chat AS chat");
+  if (chats.length > 0) {
+    const live = await prisma.conversation.findMany({
+      where: { userId, id: { in: chats.map((c) => c.chat) } }, select: { id: true },
+    });
+    const ids = new Set(live.map((c) => c.id));
+    const removed = chats.filter((c) => !ids.has(c.chat)).map((c) => c.chat);
+    if (removed.length > 0) await run(graph, "MATCH (a:Answer) WHERE a.chat IN $removed DETACH DELETE a", { removed });
+  }
+  const [cursor] = full ? [] : await read<{ at: number; id: string | null }>(
+    graph, "MATCH (m:Meta {key: 'answers'}) RETURN m.at AS at, m.id AS id",
+  );
+  const since = cursor?.at != null ? new Date(cursor.at) : null;
+  // Use both timestamp and id: more than one batch may share a timestamp.
+  // A cursor from the older projection has no id, so replay its boundary.
+  const after = since
+    ? cursor.id
+      ? { OR: [{ createdAt: { gt: since } }, { createdAt: since, id: { gt: cursor.id } }] }
+      : { createdAt: { gte: since } }
+    : {};
   const answers = await prisma.chatMessage.findMany({
-    where: { role: "ASSISTANT", conversation: { userId }, ...(since ? { createdAt: { gt: since } } : {}) },
-    orderBy: { createdAt: "asc" },
+    where: { role: "ASSISTANT", conversation: { userId }, ...after },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: ANSWERS,
     select: { id: true, content: true, refs: true, model: true, createdAt: true, conversationId: true, conversation: { select: { title: true } } },
   });
@@ -118,7 +139,8 @@ export async function projectAnswers(graph: Graph, userId: string, full: boolean
      SET e.page = c.page`,
     { rows },
   );
-  await mark(graph, "answers", answers[answers.length - 1].createdAt.getTime());
+  const last = answers[answers.length - 1];
+  await run(graph, "MERGE (m:Meta {key: 'answers'}) SET m.at = $at, m.id = $id", { at: last.createdAt.getTime(), id: last.id });
 }
 
 export type StaleAnswer = {
@@ -155,11 +177,12 @@ export async function staleAnswers(graph: Graph, opts: { noteId?: string; chat?:
         { note: opts.noteId },
       )
     : opts.chat
-      ? await read<Row>(graph, `MATCH (a:Answer {chat: $chat})-[:CITES]->(n:Note) ${STALE} ${RETURN}`, { chat: opts.chat })
+      ? await read<Row>(graph, `MATCH (a:Answer {chat: $chat})-[:CITES]->(n) ${STALE} ${RETURN}`, { chat: opts.chat })
       : (
           await Promise.all([
             read<Row>(graph, `MATCH (a:Answer)-[:CITES]->(n:Note)<-[:SUPERSEDES {accepted: true}]-(:Note) ${RETURN}`),
             read<Row>(graph, `MATCH (n:Note {deleted: true}) WITH n MATCH (a:Answer)-[:CITES]->(n) ${RETURN}`),
+            read<Row>(graph, `MATCH (n:Doc {deleted: true}) WITH n MATCH (a:Answer)-[:CITES]->(n) ${RETURN}`),
           ])
         )
           .flat()
@@ -169,7 +192,7 @@ export async function staleAnswers(graph: Graph, opts: { noteId?: string; chat?:
   for (const r of rows) {
     const answer = byAnswer.get(r.id) ?? { id: r.id, at: r.at, chat: r.chat, chatTitle: r.chatTitle, question: r.question, excerpt: r.excerpt, cited: [] };
     const head = heads.get(r.cid)?.heads.find((h) => h.id && h.id !== r.cid);
-    answer.cited.push({
+    if (!answer.cited.some((c) => c.id === r.cid)) answer.cited.push({
       id: r.cid, page: r.page, title: r.title,
       now: !r.deleted && head ? { id: head.id!, page: head.page ?? null, title: head.title ?? "" } : null,
     });

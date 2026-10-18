@@ -66,4 +66,13 @@ describe.skipIf(!url)("answers and documents", () => {
     const docs = await docsAbout(g, anyWord("idempotency keys"));
     expect(docs).toMatchObject([{ id: "d7", page: 7, citedBy: 1 }]);
   });
+
+  it("flags a deleted document in both the notebook and its conversation", async () => {
+    await run(g, `CREATE (d:Doc {id: 'deleted-doc', page: 8, title: 'Removed payment guide', deleted: true}),
+      (a:Answer {id: 'doc-answer', at: 4, chat: 'doc-chat', chatTitle: 'Payment guide', excerpt: 'See [p. 8]'})-[:CITES {page: 8}]->(d)`);
+    for (const opts of [{}, { chat: "doc-chat" }]) {
+      const answer = (await staleAnswers(g, opts)).find((a) => a.id === "doc-answer");
+      expect(answer?.cited).toEqual([{ id: "deleted-doc", page: 8, title: "Removed payment guide", now: null }]);
+    }
+  });
 });
