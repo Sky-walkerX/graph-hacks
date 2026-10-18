@@ -1,6 +1,6 @@
 # Baseline evaluation
 
-Twelve frozen fixtures, run through the same MCP calls against the original LockIn (commit `99e7e3a`, imported before the event) and against LockIn Manifest. The expectations were written before either system ran; see `eval/baseline.mjs`. Run on 2026-10-18 10:06 UTC.
+Twelve frozen fixtures, run through the same MCP calls against the original LockIn (commit `78a20d7`, imported before the event) and against LockIn Manifest. The expectations were written before either system ran; see `eval/baseline.mjs`. Run on 2026-10-18 10:06 UTC.
 
 | | Fixture | Correct means | LockIn (original) | LockIn Manifest |
 |---|---|---|---|---|

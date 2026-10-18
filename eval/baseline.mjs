@@ -1,5 +1,5 @@
 // The same twelve frozen fixtures, run against the original LockIn (the
-// imported commit, 99e7e3a) and against LockIn Manifest, through the same MCP
+// imported commit, 78a20d7) and against LockIn Manifest, through the same MCP
 // calls. Each fixture sets up notes and a baton as an agent and the user
 // would, has another agent pick the baton up, and checks what it was handed
 // against what it should have been handed. Steps that need a tool the
@@ -254,7 +254,7 @@ async function main() {
   const onlyB = FIXTURES.filter((_, i) => b[i].ok && !m[i].ok).map((f) => f.id);
   const md = `# Baseline evaluation
 
-Twelve frozen fixtures, run through the same MCP calls against the original LockIn (commit \`99e7e3a\`, imported before the event) and against LockIn Manifest. The expectations were written before either system ran; see \`eval/baseline.mjs\`. Run on ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC.
+Twelve frozen fixtures, run through the same MCP calls against the original LockIn (commit \`78a20d7\`, imported before the event) and against LockIn Manifest. The expectations were written before either system ran; see \`eval/baseline.mjs\`. Run on ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC.
 
 | | Fixture | Correct means | LockIn (original) | LockIn Manifest |
 |---|---|---|---|---|

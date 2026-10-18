@@ -4,7 +4,7 @@ Research date: **18 October 2026**. Planning checkpoint: approximately **13:26 I
 
 Repository: [Sky-walkerX/graph-hacks](https://github.com/Sky-walkerX/graph-hacks).
 
-Status: sections 1–21 are the original research and design (about 13:26 IST). Sections 22–25, added at about 15:30 IST, refresh the competitor sweep, add past winners of similar tracks, and rank the features to build. The LockIn foundation is imported (commit `99e7e3a`) and FalkorDB runs in `docker-compose.yml`; no graph feature is implemented yet.
+Status: sections 1–21 are the original research and design (about 13:26 IST). Sections 22–25, added at about 15:30 IST, refresh the competitor sweep, add past winners of similar tracks, and rank the features to build. The LockIn foundation is imported (commit `78a20d7`) and FalkorDB runs in `docker-compose.yml`; no graph feature is implemented yet.
 
 ## 1. Recommendation
 

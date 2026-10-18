@@ -222,7 +222,7 @@ Its first run managed 25 a second at any concurrency: every query went down one 
 
 ## What was reused and what is new
 
-LockIn existed before the event. The import is its own commit (`99e7e3a`, from `Sky-walkerX/LockIn@1a5924a`), so `git diff 99e7e3a` shows everything built during Graph Hacks.
+LockIn existed before the event. The import is its own commit (`78a20d7`, from `Sky-walkerX/LockIn@1a5924a`), so `git diff 78a20d7` shows everything built during Graph Hacks.
 
 | Before the event (LockIn) | Built during Graph Hacks |
 |---|---|

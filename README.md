@@ -103,7 +103,7 @@ To connect a real agent, create a token in **Settings → Connect your agents** 
 
 ## Built for Graph Hacks
 
-Entered in **Track 02, Agent Memory and Coordination**, and **Track 03, Company Brain**, of [Graph Hacks](https://www.wemakedevs.org/hackathons/falkordb) (WeMakeDevs × FalkorDB). LockIn existed before the event and is imported as its own commit (`99e7e3a`); everything since, including all of the FalkorDB work, was built during it. See [what was reused and what is new](docs/how-it-works.md#what-was-reused-and-what-is-new).
+Entered in **Track 02, Agent Memory and Coordination**, and **Track 03, Company Brain**, of [Graph Hacks](https://www.wemakedevs.org/hackathons/falkordb) (WeMakeDevs × FalkorDB). LockIn existed before the event and is imported as its own commit (`78a20d7`); everything since, including all of the FalkorDB work, was built during it. See [what was reused and what is new](docs/how-it-works.md#what-was-reused-and-what-is-new).
 
 Built with Claude Code as a pair programmer. The original LockIn README is in [`docs/lockin.md`](docs/lockin.md). The films are made with Remotion, in [`video/`](video).
 
