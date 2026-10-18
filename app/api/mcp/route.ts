@@ -30,8 +30,10 @@ import { formatNote, formatPlan, formatPlanItem, formatRelated, formatSearch, fo
 import { relatedNotes } from "@/lib/notes/related";
 import { noteMarks, readById, readPlan } from "@/lib/mcp/read";
 import { captureSession } from "@/lib/notes/capture";
-import { formatHandoff } from "@/lib/handoff/card";
+import { clipPages, formatHandoff, type PinnedPage } from "@/lib/handoff/card";
 import { latestOpen, markPickedUp, pinnedPages, saveHandoff, type Find } from "@/lib/handoff/store";
+import { changesForTask, check, deliver, dependOn, impact } from "@/lib/graph/manifest";
+import { formatChanges, formatImpact, formatManifest } from "@/lib/graph/format";
 
 // The notebook's MCP server: agents (Claude Code, Codex, Cursor…) list
 // subjects, search, read notes and plans, save and add to notes, edit the
@@ -100,18 +102,38 @@ function commitDate(given: string | undefined) {
 
 /**
  * The open baton for a subject or repo (else the newest), as the agent picking
- * it up reads it, with the pages it pins. Marks it taken unless `peek`, which
- * is how a session's start shows it without claiming it.
+ * it up reads it. Marks it taken unless `peek`, which is how a session's start
+ * shows it without claiming it. Taking it hands over the context the graph
+ * works out for it (lib/graph/context.ts): the pages it pins and the ones its
+ * task depends on, each as the page that stands now, with a receipt of what
+ * was handed over.
  */
 async function pickUp({ userId, source, origin }: Caller, find: Find, peek: boolean): Promise<string | null> {
   const baton = await latestOpen(userId, find);
   if (!baton) return null;
-  const pinned = await pinnedPages(userId, baton.pages);
-  if (!peek) await markPickedUp(userId, baton.id, source);
-  const card = formatHandoff(baton, pinned, origin ? `${origin}/contents` : null);
-  return peek
-    ? `${card}\n\nThis baton is open: call pickup_handoff to take it and carry on from Next.`
-    : `${card}\n\nYou've picked this up. Carry on from Next. When you stop before it's done, leave a baton with save_handoff.`;
+  const url = origin ? `${origin}/contents` : null;
+  if (peek) {
+    const card = formatHandoff(baton, await pinnedPages(userId, baton.pages), url);
+    return `${card}\n\nThis baton is open: call pickup_handoff to take it and carry on from Next.`;
+  }
+  // Two agents can reach the same baton at once; only the claim that lands takes it.
+  if (!(await markPickedUp(userId, baton.id, source))) {
+    return `Another agent took the baton "${baton.goal}" a moment ago, so it isn't yours. Ask the user what to work on, or call pickup_handoff again for the next open one.`;
+  }
+  let pages: PinnedPage[];
+  let manifest: string;
+  try {
+    const delivered = await deliver(userId, source, baton.id);
+    pages = delivered.pages;
+    manifest = formatManifest(delivered.receipt);
+  } catch (e) {
+    console.error("Building a baton's context manifest failed", e);
+    pages = await pinnedPages(userId, baton.pages);
+    manifest =
+      "No context manifest: the graph can't be reached. The pinned pages are as the baton left them; replacements and dependencies since aren't followed.";
+  }
+  const card = formatHandoff(baton, pages, url);
+  return `${card}\n\n${manifest}\n\nYou've picked this up. Carry on from Next. When you stop before it's done, leave a baton with save_handoff.`;
 }
 
 const noBaton = (find: Find) =>
@@ -406,8 +428,10 @@ const handler = createMcpHandler(
         indexAfterReply(userId, note.id);
         const subject = await prisma.subject.findUnique({ where: { id: note.subjectId }, select: { isInbox: true } });
         const url = noteUrl(origin, note.subjectId, subject?.isInbox ?? false, note.id);
+        const leans = await impact(userId, old.id).catch(() => null);
+        const preview = leans && (leans.dependents.length > 0 || leans.told.length > 0) ? `\n\nOnce witnessed, this affects:\n${formatImpact(leans).split("\n").slice(1).join("\n")}` : "";
         return text(
-          `Saved "${note.title}" on page ${note.page} to replace page ${old.page} ("${old.title}"). Note id ${note.id}.\nThe old note stays in search until the user witnesses this one.${url ? `\n${url}` : ""}${older}${date.warning}`,
+          `Saved "${note.title}" on page ${note.page} to replace page ${old.page} ("${old.title}"). Note id ${note.id}.\nThe old note stays in search until the user witnesses this one.${url ? `\n${url}` : ""}${older}${date.warning}${preview}`,
         );
       },
     );
@@ -508,6 +532,78 @@ const handler = createMcpHandler(
         // A peek runs after every compaction: with nothing open it says so in
         // a few words, rather than pointing at batons left for other work.
         return text(card ?? (peek ? "No baton is open for this work." : noBaton(find)));
+      },
+    );
+
+    server.registerTool(
+      "check_context",
+      {
+        title: "Check whether what you were handed has changed",
+        description:
+          "Compare the context you were handed when you picked up a baton (its receipt) with the notebook now: pages replaced and witnessed since, edited, withdrawn, or newly linked to the work. Call it before you tick the task done or leave a baton, and whenever you've been working a while. With refresh (the default) you get the changed pages' text and a new receipt, so you work from what stands now.",
+        inputSchema: z.object({
+          receipt_id: z.string().min(1).max(64).optional().describe("The receipt from pickup_handoff; your newest one if left out"),
+          refresh: z.union([z.boolean(), z.enum(["true", "false"])]).optional().describe("false to only report what changed"),
+        }),
+        annotations: { readOnlyHint: false, destructiveHint: false },
+      },
+      async ({ receipt_id, refresh }, ctx) => {
+        const { userId, source } = caller(ctx.http?.authInfo);
+        const result = await check(userId, source, receipt_id, refresh !== false && refresh !== "false");
+        if (!result) return failed(receipt_id ? `No receipt ${receipt_id} in this notebook.` : "You hold no receipt: pick up a baton with pickup_handoff first.");
+        const lines = [formatChanges(result.changes, result.receipt.at)];
+        if (result.receipt.refreshed) lines.push("(That receipt was already refreshed; check the newer one.)");
+        if (result.refreshed) {
+          lines.push(`\nNew receipt ${result.refreshed.receipt.id}. The changed pages as they stand now:\n`, clipPages(result.refreshed.pages).join("\n\n"));
+          if (result.refreshed.receipt.warnings.length > 0) lines.push("\nCareful:", ...result.refreshed.receipt.warnings.map((w) => `- ${w}`));
+        }
+        return text(lines.join("\n"));
+      },
+    );
+
+    server.registerTool(
+      "link_dependency",
+      {
+        title: "Say a task or note depends on a note",
+        description:
+          "Record that a plan task, or a note, relies on what another note says (a decision, a constraint, an API's behaviour). Then whoever picks up a baton for that task is handed the note, and when the note is replaced the task shows up in impact_of_change and check_context. Give task_id or note_id, and depends_on.",
+        inputSchema: z.object({
+          task_id: z.string().min(1).max(64).optional().describe("The task that relies on it"),
+          note_id: z.string().min(1).max(64).optional().describe("Or the note that relies on it"),
+          depends_on: z.string().min(1).max(64).describe("The id of the note it relies on"),
+          reason: z.string().trim().max(300).optional().describe("Why, in a line"),
+        }),
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true },
+      },
+      async ({ task_id, note_id, depends_on, reason }, ctx) => {
+        const { userId, source } = caller(ctx.http?.authInfo);
+        if (!task_id === !note_id) return failed("Give task_id or note_id, one of them.");
+        const linked = await dependOn(userId, source, { taskId: task_id, noteId: note_id }, depends_on, reason ?? null);
+        switch (linked) {
+          case "missing-from":
+            return failed(task_id ? `No task with id ${task_id} in this notebook.` : `No note with id ${note_id} in this notebook.`);
+          case "missing-to":
+            return failed(`No note with id ${depends_on} in this notebook.`);
+          case "loop":
+            return failed("That would make a loop: the note already depends on it.");
+        }
+        return text(`Recorded: ${task_id ? `task ${task_id}` : `note ${note_id}`} depends on note ${depends_on}.`);
+      },
+    );
+
+    server.registerTool(
+      "impact_of_change",
+      {
+        title: "See what leans on a note",
+        description:
+          "Before you replace a note, or after a replacement is witnessed: the tasks, batons and notes that depend on it (or on the notes it replaced), each with the path that links them, and the agents handed it that haven't refreshed since. Those need another look.",
+        inputSchema: z.object({ note_id: z.string().min(1).max(64).describe("The note's id") }),
+        annotations: { readOnlyHint: true },
+      },
+      async ({ note_id }, ctx) => {
+        const { userId } = caller(ctx.http?.authInfo);
+        const found = await impact(userId, note_id);
+        return found ? text(formatImpact(found)) : failed(`No note with id ${note_id} in this notebook.`);
       },
     );
 
@@ -661,7 +757,7 @@ const handler = createMcpHandler(
         annotations: { readOnlyHint: false, destructiveHint: false },
       },
       async ({ id, done, title, add_notes }, ctx) => {
-        const { userId, origin } = caller(ctx.http?.authInfo);
+        const { userId, source, origin } = caller(ctx.http?.authInfo);
         if (done === undefined && title === undefined && add_notes === undefined) {
           return failed("Nothing to change: give done, title or add_notes.");
         }
@@ -669,6 +765,20 @@ const handler = createMcpHandler(
           prisma.task.findFirst({ where: { id, userId }, select: { subjectId: true } }),
           prisma.subtask.findFirst({ where: { id, task: { userId } }, select: { task: { select: { subjectId: true } } } }),
         ]);
+        // A task picked up from a baton is ticked done only against the
+        // context as it stands: if a page it was handed has changed since,
+        // the agent takes the new context first (check_context).
+        if (task && done === true) {
+          const changes = await changesForTask(userId, source, id).catch((e) => {
+            console.error("Checking a task's context failed", e);
+            return null;
+          });
+          if (changes && changes.length > 0) {
+            return failed(
+              `Not ticked: the context you picked this task up with has changed.\n${formatChanges(changes, Date.now()).split("\n").slice(1).join("\n")}\nCall check_context to take the new context, check your work against it, then tick the task again.`,
+            );
+          }
+        }
         const changes = [
           done === true ? "ticked done" : done === false ? "unticked" : null,
           title !== undefined ? "renamed" : null,

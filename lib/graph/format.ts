@@ -1,0 +1,77 @@
+import type { Change, Impact, Item, Receipt, Step } from "./context";
+
+// The manifest, its changes and a note's impact, as an agent reads them in an
+// MCP reply. Pure, so it's tested alone.
+
+const page = (p: { page: number | null; title: string }) => (p.page != null ? `p. ${p.page} "${p.title}"` : `"${p.title}"`);
+
+const step = (s: Step) =>
+  s.kind === "Note" ? (s.page != null ? `p. ${s.page}` : `note "${s.label}"`) : s.kind === "Handoff" ? "this baton" : `${s.kind.toLowerCase()} "${s.label}"`;
+
+/** How the baton reaches a page: "this baton → task "Add retry" → p. 1". */
+export const path = (via: Step[]) => via.map(step).join(" → ");
+
+function line(i: Item): string {
+  const why = path(i.via);
+  const replaced = i.replaces
+    ? ` Stands in for p. ${i.replaces.page} ("${i.replaces.title}"), replaced as witnessed: ${i.replaces.chain.map((p) => `p. ${p}`).join(" → ")}.`
+    : "";
+  const status = i.witnessed ? "" : " Not witnessed yet.";
+  return `- ${page(i)} (note ${i.id}), via ${why}.${replaced}${status}`;
+}
+
+/** The manifest section of a picked-up baton. */
+export function formatManifest(receipt: Receipt): string {
+  const lines = [`## Context manifest (receipt ${receipt.id})`];
+  if (receipt.items.length === 0) lines.push("The graph links no pages to this baton.");
+  else lines.push("The graph found these pages for this work; the pages below are their current text.", ...receipt.items.map(line));
+  if (receipt.warnings.length > 0) lines.push("", "Careful:", ...receipt.warnings.map((w) => `- ${w}`));
+  lines.push(
+    "",
+    "Before you tick the task done or leave a baton, call check_context: it says whether any of these pages changed since now.",
+  );
+  return lines.join("\n");
+}
+
+function changeLine(c: Change): string {
+  switch (c.kind) {
+    case "replaced":
+      return `- REPLACED: ${page(c.was)} was replaced by ${page(c.now)} (note ${c.now.id}), now witnessed. Reached via ${path(c.now.via)}.`;
+    case "edited":
+      return `- EDITED: ${page(c.now)} (note ${c.now.id}) changed since you read it.`;
+    case "witnessed":
+      return `- WITNESSED: ${page(c.now)} was a proposal when you read it; the user has witnessed it, so it now stands.`;
+    case "withdrawn":
+      return `- WITHDRAWN: ${page(c.was)} was deleted from the notebook.`;
+    case "dropped":
+      return `- NO LONGER LINKED: ${page(c.was)} isn't part of this work any more.`;
+    case "added":
+      return `- ADDED: ${page(c.now)} (note ${c.now.id}) is now part of this work, via ${path(c.now.via)}.`;
+  }
+}
+
+/** What changed since a receipt. */
+export function formatChanges(changes: Change[], since: number): string {
+  const at = new Date(since).toISOString().slice(0, 16).replace("T", " ");
+  if (changes.length === 0) return `Nothing you were handed at ${at} UTC has changed. Your context is current.`;
+  return [`${changes.length} change${changes.length === 1 ? "" : "s"} since you were handed this work at ${at} UTC:`, ...changes.map(changeLine)].join("\n");
+}
+
+/** What leans on a note. */
+export function formatImpact(impact: Impact): string {
+  const lines = [`# What leans on ${page(impact.note)}`];
+  if (impact.dependents.length === 0) lines.push("No task, baton or note depends on it in the graph.");
+  for (const d of impact.dependents) {
+    const what = d.kind === "Handoff" ? `Baton "${d.label}"` : d.kind === "Task" ? `Task "${d.label}"` : `Note "${d.label}"`;
+    lines.push(`- ${what}${d.status ? ` (${d.status.toLowerCase().replace("_", " ")})` : ""}: ${d.path.map(step).join(" → ")}`);
+  }
+  if (impact.told.length > 0) {
+    lines.push("", "Agents working from it (or a page that leans on it):");
+    for (const t of impact.told) {
+      const at = new Date(t.at).toISOString().slice(0, 16).replace("T", " ");
+      const what = t.page != null ? `p. ${t.page}` : "it";
+      lines.push(`- ${t.agent}: handed ${what} at ${at} UTC (receipt ${t.receipt})${t.stale ? `, replaced since: their context is out of date` : ", still current"}`);
+    }
+  }
+  return lines.join("\n");
+}
