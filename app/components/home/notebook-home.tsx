@@ -8,6 +8,8 @@ import { useClock } from "@/app/components/clock";
 import { RuledBoxes } from "../notebook/ruled-boxes";
 import { Contents } from "./contents";
 import { BatonCard } from "./baton-card";
+import { ManifestCard } from "./manifest-card";
+import { BrainCard } from "./brain-card";
 import { NeedsALook } from "./needs-a-look";
 import { TodayStrip } from "./today-strip";
 import { NewSubject } from "./new-subject";
@@ -70,6 +72,8 @@ export function NotebookHome() {
       </header>
 
       <BatonCard />
+      <ManifestCard />
+      <BrainCard />
       <NeedsALook />
       <TodayStrip />
 

@@ -12,8 +12,9 @@ import {
 } from "@/lib/subject-cache";
 
 // Milestones (notes) are read through the subject detail query (["subject",
-// id]). These mutations invalidate that, the spine's subject counts, and the
-// cross-subject note lists (home contents, Inbox counts).
+// id]). These mutations invalidate that, the spine's subject counts, the
+// cross-subject note lists (home contents, Inbox counts), and the agents'
+// context manifests, which a witnessed replacement can put out of date.
 function useInvalidate() {
   const qc = useQueryClient();
   return () => {
@@ -21,6 +22,7 @@ function useInvalidate() {
     qc.invalidateQueries({ queryKey: ["subjects"] });
     qc.invalidateQueries({ queryKey: ["notes"] });
     qc.invalidateQueries({ queryKey: ["inbox"] });
+    qc.invalidateQueries({ queryKey: ["manifests"] });
   };
 }
 

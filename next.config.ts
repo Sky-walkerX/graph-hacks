@@ -61,6 +61,10 @@ const nextConfig: NextConfig = {
   // Dockerfile). Vercel builds its own output and ignores this.
   output: "standalone",
 
+  // The FalkorDB client (lib/graph) runs from node_modules: bundled, its
+  // Temporal polyfill loses BigInt and the module fails as it loads.
+  serverExternalPackages: ["falkordb"],
+
   async headers() {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },
