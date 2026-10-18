@@ -1,4 +1,5 @@
 import { reopened, type Attempt, type Change, type Impact, type Item, type Outcome, type Receipt, type Step } from "./context";
+import type { StaleAnswer } from "./ask";
 import type { Keystone, Known } from "./brain";
 
 // The manifest, its changes and a note's impact, as an agent reads them in an
@@ -78,6 +79,10 @@ export function formatChanges(changes: Change[], since: number): string {
   return [`${changes.length} change${changes.length === 1 ? "" : "s"} since you were handed this work at ${at} UTC:`, ...changes.map(changeLine)].join("\n");
 }
 
+/** An Ask answer by its question, and its chat when that's named otherwise. */
+const asked = (a: { question: string | null; chatTitle: string }) =>
+  a.question && !a.chatTitle.startsWith(a.question.slice(0, 40)) ? `"${a.question}" (chat "${a.chatTitle}")` : `"${a.question ?? a.chatTitle}"`;
+
 /** What leans on a note. */
 export function formatImpact(impact: Impact): string {
   const lines = [`# What leans on ${page(impact.note)}`];
@@ -93,6 +98,10 @@ export function formatImpact(impact: Impact): string {
       const what = t.page != null ? `p. ${t.page}` : "it";
       lines.push(`- ${t.agent}: handed ${what} at ${at} UTC (receipt ${t.receipt})${t.stale ? `, replaced since: their context is out of date` : ", still current"}`);
     }
+  }
+  if (impact.answers.length > 0) {
+    lines.push("", `Ask answers that cite it (${impact.answers.length}):`);
+    for (const a of impact.answers) lines.push(`- ${asked(a)}, citing p. ${a.page}`);
   }
   return lines.join("\n");
 }
@@ -112,9 +121,14 @@ export function formatOutcomes(found: Outcome[]): string {
     .join("\n\n");
 }
 
+type Doc = { page: number | null; title: string; url: string; citedBy: number };
+
 /** What the notebook knows about a topic or file, and who knows it. */
-export function formatKnown(found: Known[], asked: string): string {
-  if (found.length === 0) return `Nothing in the notebook is about ${asked}.`;
+export function formatKnown(found: Known[], asked: string, docs: Doc[] = []): string {
+  if (found.length === 0 && docs.length === 0) return `Nothing in the notebook is about ${asked}.`;
+  const saved = docs.length
+    ? ["", "Saved documents on it:", ...docs.map((d) => `- ${page(d)}: ${d.url}${d.citedBy ? `, cited by ${d.citedBy} Ask answer${d.citedBy === 1 ? "" : "s"}` : ""}`)]
+    : [];
   return found
     .map((k) => {
       const head = `- ${page(k.note)} (note ${k.note.id})${k.note.witnessed ? "" : ", not witnessed yet"}${k.replaced.length ? `, replacing ${k.replaced.map((p) => `p. ${p}`).join(", ")}` : ""}${k.files.length ? `. Files: ${k.files.join(", ")}` : ""}`;
@@ -124,9 +138,22 @@ export function formatKnown(found: Known[], asked: string): string {
           : `  - ${w.agent} was handed ${w.current ? "it" : `p. ${w.page}, since replaced: out of date`}`,
       );
       if (!k.note.source) who.unshift("  - you wrote it");
+      if (k.answers.stale) who.push(`  - ${k.answers.stale} Ask answer${k.answers.stale === 1 ? " cites" : "s cite"} a version it replaced: out of date`);
+      if (k.answers.current) who.push(`  - ${k.answers.current} Ask answer${k.answers.current === 1 ? " cites" : "s cite"} it`);
       return [head, ...who].join("\n");
     })
-    .join("\n");
+    .concat(saved)
+    .join("\n")
+    .trim();
+}
+
+/** Ask answers built on pages the notebook has moved past. */
+export function formatStaleAnswers(found: StaleAnswer[]): string {
+  if (found.length === 0) return "No Ask answer cites a page that has been replaced or deleted.";
+  return [
+    `${found.length} Ask answer${found.length === 1 ? " cites" : "s cite"} pages the notebook has moved past. Asking again answers from what stands now:`,
+    ...found.map((a) => `- ${asked(a)}: ${a.cited.map((c) => `${page(c)} ${c.now ? `was replaced by ${page(c.now)}` : "was deleted"}`).join("; ")}`),
+  ].join("\n");
 }
 
 /** The decisions the most work rests on. */

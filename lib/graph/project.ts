@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Graph } from "falkordb";
 import prisma from "@/lib/prisma";
 import { graphFor, read, run } from "./client";
+import { projectAnswers, projectDocs } from "./ask";
 import { contextFor } from "./context";
 
 // The notebook, projected into the account's graph. Postgres stays the
@@ -63,6 +64,8 @@ async function sync(userId: string): Promise<Graph> {
   });
   await projectNotes(graph, notes);
   await markDeleted(graph, userId);
+  await projectDocs(graph, userId, !since);
+  await projectAnswers(graph, userId, !since);
   await projectBatons(graph, userId);
   await refreshTasks(graph, userId);
 

@@ -262,6 +262,8 @@ export type Impact = {
   dependents: { kind: string; id: string; label: string; status: string | null; path: Step[] }[];
   /** Agents given it (or a page that leans on it) in a receipt nothing has refreshed; `stale` when what they were given has been replaced since. */
   told: { agent: string; receipt: string; at: number; handoff: string; page: number | null; stale: boolean }[];
+  /** Ask answers that cite it or a page it replaced. */
+  answers: { id: string; chatTitle: string; question: string | null; page: number | null; at: number }[];
 };
 
 /**
@@ -297,7 +299,16 @@ export async function impactOf(graph: Graph, noteId: string): Promise<Impact | n
      ORDER BY at DESC`,
     { id: noteId },
   );
-  return { note, dependents: unique, told };
+  const answers = await read<Impact["answers"][number]>(
+    graph,
+    `MATCH (d:Note {id: $id})-[:SUPERSEDES*0..${CHAIN}]->(base:Note)
+     WITH DISTINCT base
+     MATCH (a:Answer)-[c:CITES]->(base)
+     RETURN DISTINCT a.id AS id, a.chatTitle AS chatTitle, a.question AS question, c.page AS page, a.at AS at
+     ORDER BY at DESC LIMIT 20`,
+    { id: noteId },
+  );
+  return { note, dependents: unique, told, answers };
 }
 
 /** Says `from` (a task or a note) depends on note `to`. Refuses a loop. */

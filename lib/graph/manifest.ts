@@ -6,7 +6,8 @@ import {
   type Attempt, type Change, type Delivered, type Item, type Receipt,
 } from "./context";
 import { projectTask, syncedGraph } from "./project";
-import { keystones, whoKnows } from "./brain";
+import { docsAbout, staleAnswers } from "./ask";
+import { anyWord, keystones, whoKnows } from "./brain";
 import { receiptView } from "./view";
 
 // The manifest: what a baton's next agent is handed, worked out in the graph
@@ -137,7 +138,14 @@ export async function dependOn(userId: string, agent: string, from: { taskId?: s
 
 /** What's known about a topic or a file, and by which agents: see whoKnows. */
 export async function knows(userId: string, find: { topic?: string; file?: string }) {
-  return whoKnows(await syncedGraph(userId), find);
+  const graph = await syncedGraph(userId);
+  const docs = find.topic ? await docsAbout(graph, anyWord(find.topic)) : [];
+  return { known: await whoKnows(graph, find), docs };
+}
+
+/** Ask answers that cite replaced or deleted pages: see staleAnswers. */
+export async function answersToReask(userId: string, opts: { noteId?: string; chat?: string } = {}) {
+  return staleAnswers(await syncedGraph(userId), { ...opts, limit: opts.chat ? 200 : undefined });
 }
 
 /** The decisions the most work rests on: see keystones. */
